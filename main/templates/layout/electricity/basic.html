@@ -1,0 +1,52 @@
+{% extends "layout/basic.html" %}
+
+
+{% block content %}
+    <div class="col-2">
+        <div class="list-group">
+            <div class="list-group">
+                <a href="/electricity/per_3_min/" class="list-group-item list-group-item-action">Трехминутные накопления мощности</a>
+                <a href="#" class="list-group-item list-group-item-action">A second link item</a>
+                <a href="#" class="list-group-item list-group-item-action">A third link item</a>
+                <a href="#" class="list-group-item list-group-item-action">A fourth link item</a>
+                <a href="/electricity/config/" class="list-group-item list-group-item-action">Перечень точек учета</a>
+            </div>
+        </div>
+
+        <div class="dropdown">
+            <a class="btn btn-secondary dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+               data-bs-toggle="dropdown" aria-expanded="false">
+                Dropdown link
+            </a>
+
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                <li><a class="dropdown-item" href="#">Action</a></li>
+                <li><a class="dropdown-item" href="#">Another action</a></li>
+                <li><a class="dropdown-item" href="#">Something else here</a></li>
+            </ul>
+        </div>
+
+
+        <!-- Split dropend button -->
+        <div class="btn-group dropend">
+            <button type="button" class="btn btn-secondary">
+                Split dropend
+            </button>
+            <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">Toggle Dropright</span>
+            </button>
+            <ul class="dropdown-menu">
+                <!-- Dropdown menu links -->
+            </ul>
+        </div>
+
+    </div>
+
+
+
+    <div class="col-10">
+        {% block content1 %}
+        {% endblock %}
+    </div>
+{% endblock %}

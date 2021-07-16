@@ -1,0 +1,15 @@
+influxdb:
+  url: http://localhost:8086
+  org: Inosat
+  token: KKIIV60BcG5u8BYRcPMc3EaZLcvKj73FWg0i3DXkmWUQ5enQtotEVK0VNbiNgTCGQL1bz5z-mOLXoaV_Puv5XQ==
+  bucket: inosatiot_resources_sim
+
+electricity:
+  - name: Ввод 1
+    influxdb_meas: counter1
+  - name: Ввод 2
+    influxdb_meas: counter2
+
+water:
+  - water1
+  - water2

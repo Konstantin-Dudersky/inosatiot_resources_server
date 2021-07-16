@@ -1,0 +1,24 @@
+{% extends "layout/electricity/basic.html" %}
+
+{% block content1 %}
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">name</th>
+            <th scope="col">influxdb_meas</th>
+        </tr>
+        </thead>
+        <tbody>
+
+
+        {% for row in table %}
+            <tr>
+                <th scope="row">{{ row.name }}</th>
+                <td>{{ row.influxdb_meas }}</td>
+            </tr>
+
+        {% endfor %}
+        </tbody>
+
+    </table>
+{% endblock %}
