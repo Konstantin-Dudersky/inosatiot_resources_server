@@ -1,6 +1,48 @@
 {% extends "layout/electricity/basic.html" %}
 
 {% block content1 %}
+        <form class="m-4" method="post">
+        {% csrf_token [ csrf_token] %}
+
+        <fieldset>
+            <legend>Потребление электроэнергии, по 3 минуты</legend>
+
+            <div class="row mb-3">
+                <label for="from_time" class="col-sm-2 col-lg-1 col-form-label">От</label>
+                <div class="col-sm-5 col-lg-2">
+                    {{ form.from_time }}
+                </div>
+
+                <div class="col-sm-5 col-lg-2">
+                    {{ form.from_date }}
+                </div>
+
+                <label for="to_time" class="col-sm-2 col-lg-1 offset-lg-1 col-form-label">До</label>
+                <div class="col-sm-5 col-lg-2">
+                    {{ form.to_time }}
+                </div>
+
+                <div class="col-sm-5 col-lg-2">
+                    {{ form.to_date }}
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label for="{{ form.name.id_for_label }}" class="col-sm-2 col-lg-1 col-form-label">{{ form.name.label }}</label>
+                <div class="col-sm-5 col-lg-2">{{ form.name }}</div>
+            </div>
+
+            <div class="row">
+
+                <div class="col">
+                    <button type="submit" class="btn btn-primary">Excel</button>
+                </div>
+
+            </div>
+        </fieldset>
+
+    </form>
+
     {% autoescape off %}
         {{ plot_div }}
     {% endautoescape %}
