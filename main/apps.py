@@ -1,7 +1,7 @@
 import os
 
 from django.apps import AppConfig
-from .config import Config
+
 
 class MainConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -14,4 +14,3 @@ class MainConfig(AppConfig):
         os.environ['CMDLINERUNNER_RUN_ONCE'] = 'True'
 
         # код запустится только раз при запуске сервера
-        Config()

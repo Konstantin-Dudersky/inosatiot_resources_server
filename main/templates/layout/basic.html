@@ -8,12 +8,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap CSS -->
-    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
-
+    <link href="{% static 'css/bootstrap.darkly.min.css' %}" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+        }
+    </style>
     <title>Hello, world!</title>
 </head>
 <body>
-<div class="container-fluid">
+<div class="container-fluid h-100">
     <div class="row">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
@@ -33,10 +37,6 @@
                             <a class="nav-link" href="/water/">Водоснабжение</a>
                         </li>
                     </ul>
-                    <form class="d-flex">
-                        <input class="form-control me-sm-2" type="text" placeholder="Search">
-                        <button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
-                    </form>
                 </div>
             </div>
         </nav>

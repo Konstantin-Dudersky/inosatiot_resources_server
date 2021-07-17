@@ -1,5 +1,7 @@
 import datetime
 
+import plotly.express as px
+import plotly.graph_objects as go
 from django.shortcuts import render
 from influxdb_client import InfluxDBClient
 
@@ -20,7 +22,8 @@ def electricity_config(request):
 
 
 def electricity_per_3_min(request):
-    fig = ''
+    plot = ''
+
     if request.method == 'POST':
         form = DatetimePicker(request.POST, choices=Config().electricity_name_choices())
         if form.is_valid():
@@ -52,14 +55,44 @@ def electricity_per_3_min(request):
 
             df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop'])
             df = df.set_index('_time')
-            # print(df)
-            # df.info()
 
-            import plotly.express as px
-            fig = px.line(data_frame=df,
-                          line_shape='hv',
-                          template='plotly_white',
-                          ).to_html(full_html=False, default_height=700)
+            if form.cleaned_data['output'] == 'plot':
+                plot = px.line(data_frame=df,
+                               line_shape='hv',
+                               template='plotly_dark',
+                               ).to_html(full_html=False, default_height=700)
+                plot = go.Figure(
+                    data=go.Scatter(
+                        x=df.index,
+                        y=df['_value'],
+                        line=dict(
+                            shape='vh'
+                        )
+                    ),
+                    layout=go.Layout(
+                        template='plotly_dark',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)'
+                    )
+                ).to_html(full_html=False)#, default_height=700)
+
+
+            elif form.cleaned_data['output'] == 'table':
+
+                plot = go.Figure(
+                    data=go.Table(
+                        header=dict(values=['A Scores', 'B Scores'],
+                                    align='left'),
+                        cells=dict(values=[df.index, df['_value']],
+                                   align='left')
+                    ),
+                    layout=go.Layout(
+                        template='plotly_dark',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)'
+                    )
+                ).to_html(full_html=False, default_height=700)
+
     else:
         ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
         ts_to = ts_to.replace(second=0)
@@ -78,6 +111,6 @@ def electricity_per_3_min(request):
 
     return render(request, 'electricity/per_3_min.html',
                   context={
-                      'plot_div': fig,
-                      'form': form
+                      'plot': plot,
+                      'form': form,
                   })

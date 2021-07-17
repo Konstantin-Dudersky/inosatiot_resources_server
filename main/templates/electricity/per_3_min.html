@@ -1,49 +1,81 @@
-{% extends "layout/electricity/basic.html" %}
+{% extends "layout/basic.html" %}
 
-{% block content1 %}
-        <form class="m-4" method="post">
-        {% csrf_token [ csrf_token] %}
+{% block content %}
+    <div class="row">
+        <div class="col-3">
+            <form class="m-0" method="post">
+                {% csrf_token [ csrf_token] %}
 
-        <fieldset>
-            <legend>Потребление электроэнергии, по 3 минуты</legend>
+                <fieldset>
+                    <legend>Промежуток времени</legend>
 
-            <div class="row mb-3">
-                <label for="from_time" class="col-sm-2 col-lg-1 col-form-label">От</label>
-                <div class="col-sm-5 col-lg-2">
-                    {{ form.from_time }}
-                </div>
+                    <div class="row mb-3">
+                        <label for="{{ form.from_time.id_for_label }}"
+                               class="col-2 col-form-label col-form-label-sm">От</label>
+                        <div class="col-5">
+                            {{ form.from_time }}
+                        </div>
 
-                <div class="col-sm-5 col-lg-2">
-                    {{ form.from_date }}
-                </div>
+                        <div class="col-5">
+                            {{ form.from_date }}
+                        </div>
 
-                <label for="to_time" class="col-sm-2 col-lg-1 offset-lg-1 col-form-label">До</label>
-                <div class="col-sm-5 col-lg-2">
-                    {{ form.to_time }}
-                </div>
+                    </div>
+                    <div class="row mb-3">
 
-                <div class="col-sm-5 col-lg-2">
-                    {{ form.to_date }}
-                </div>
-            </div>
+                        <label for="{{ form.to_time.id_for_label }}"
+                               class="col-2 col-form-label col-form-label-sm">До</label>
+                        <div class="col-5">
+                            {{ form.to_time }}
+                        </div>
 
-            <div class="row mb-3">
-                <label for="{{ form.name.id_for_label }}" class="col-sm-2 col-lg-1 col-form-label">{{ form.name.label }}</label>
-                <div class="col-sm-5 col-lg-2">{{ form.name }}</div>
-            </div>
+                        <div class="col-5">
+                            {{ form.to_date }}
+                        </div>
+                    </div>
 
-            <div class="row">
+                    <div class="row mb-3">
+                        <label for="{{ form.name.id_for_label }}"
+                               class="col-2 col-form-label col-form-label-sm">{{ form.name.label }}</label>
+                        <div class="col-10">{{ form.name }}</div>
+                    </div>
 
-                <div class="col">
-                    <button type="submit" class="btn btn-primary">Excel</button>
-                </div>
+                    <div class="row mb-3">
+                        <div class="col-10 offset-2">
+                            {% for radio in form.output %}
+                                <div class="form-check form-check-inline">
+                                    {{ radio.tag }}
+                                    <label for="{{ radio.id_for_label }}"
+                                           class="form-check-label"> {{ radio.choice_label }}</label>
+                                </div>
+                            {% endfor %}
+                        </div>
 
-            </div>
-        </fieldset>
+                    </div>
 
-    </form>
+                    <div class="row">
 
-    {% autoescape off %}
-        {{ plot_div }}
-    {% endautoescape %}
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">OK</button>
+                        </div>
+
+                    </div>
+                </fieldset>
+
+            </form>
+        </div>
+
+
+        <div class="col-9">
+            {% autoescape off %}
+                {{ plot }}
+            {% endautoescape %}
+
+        </div>
+
+    </div>
+
+
+
+
 {% endblock %}
