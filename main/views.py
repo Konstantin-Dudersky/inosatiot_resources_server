@@ -11,6 +11,21 @@ from .config import Config
 from .forms import DatetimePicker
 
 
+def set_theme(request):
+    theme_light = 'sandstone'
+    theme_dark = 'darkly'
+
+    theme = request.session.get('theme', theme_dark)
+
+    if 'theme' in request.POST:
+        if theme == theme_light:
+            theme = theme_dark
+        else:
+            theme = theme_light
+
+    request.session['theme'] = theme
+
+
 def index(request):
     return render(request, 'index.html')
 
@@ -20,6 +35,8 @@ def electricity_config(request):
 
 
 def electricity_energy(request):
+    set_theme(request)
+
     plot = ''
 
     if request.method == 'POST':

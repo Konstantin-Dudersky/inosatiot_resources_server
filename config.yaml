@@ -9,6 +9,8 @@ electricity:
     influxdb_meas: counter1
   - name: Ввод 2
     influxdb_meas: counter2
+  - name: Освещение
+    influxdb_meas: counter3
 
 water:
   - water1

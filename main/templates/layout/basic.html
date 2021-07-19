@@ -3,18 +3,26 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap CSS -->
-    <link href="{% static 'css/bootstrap.darkly.min.css' %}" rel="stylesheet">
+    {% if request.session.theme == 'darkly' %}
+        <link href="{% static 'css/bootstrap.darkly.min.css' %}" rel="stylesheet">
+    {% endif %}
+    {% if request.session.theme == 'flatly' %}
+        <link href="{% static 'css/bootstrap.flatly.min.css' %}" rel="stylesheet">
+    {% endif %}
+    {% if request.session.theme == 'sandstone' %}
+        <link href="{% static 'css/bootstrap.sandstone.min.css' %}" rel="stylesheet">
+    {% endif %}
+
+    <script src="{% static 'fontawesomefree/js/all.min.js' %}"></script>
     <style>
         html, body {
             height: 100%;
         }
     </style>
-    <title>Hello, world!</title>
+    <title>Потребление ресурсов</title>
 </head>
 <body>
 
@@ -38,7 +46,8 @@
                                 Электроэнергия
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="/electricity/energy/">Потребление электроэнергии</a></li>
+                                <li><a class="dropdown-item" href="/electricity/energy/">Потребление электроэнергии</a>
+                                </li>
                                 <li><a class="dropdown-item" href="/electricity/power/">Пиковая мощность</a></li>
                                 <li>
                                     <hr class="dropdown-divider">
@@ -53,7 +62,13 @@
                                 Водоснабжение
                             </a>
                         </li>
+
                     </ul>
+                    <form class="d-flex" method="post">
+                        {% csrf_token [ csrf_token] %}
+                        <button class="btn btn-outline-secondary" type="submit" name="theme"><i
+                                class="fas fa-adjust"></i></button>
+                    </form>
                 </div>
             </div>
         </nav>
