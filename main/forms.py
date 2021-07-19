@@ -32,11 +32,13 @@ class DatetimePicker(forms.Form):
         required=True
     )
 
-    output = forms.CharField(
-        widget=forms.RadioSelect(
-            choices=[('plot', 'График'), ('table', 'Таблица'),],
-            attrs={'class': 'form-check-input'}
-        )
+    aggregate_window = forms.ChoiceField(
+        label='Интервал',
+        choices=[('3m', '3 минуты'), ('30m', '30 минут'), ('1d', '1 день')],
+        widget=forms.Select(
+            attrs={'class': 'form-select form-select-sm'},
+        ),
+        required=False
     )
 
     def __init__(self, *args, **kwargs):
