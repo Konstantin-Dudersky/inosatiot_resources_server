@@ -26,7 +26,7 @@ class DatetimePicker(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'})
     )
 
-    name = forms.ChoiceField(
+    tag = forms.ChoiceField(
         label='Группа',
         widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
         required=True
@@ -47,4 +47,4 @@ class DatetimePicker(forms.Form):
 
         super().__init__(*args, **kwargs)
 
-        self.fields['name'].choices = self.choices
+        self.fields['tag'].choices = self.choices

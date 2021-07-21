@@ -6,7 +6,8 @@
             <table class="table">
                 <thead>
                 <tr>
-                    <th scope="col">name</th>
+                    <th scope="col">tag</th>
+                    <th scope="col">label</th>
                     <th scope="col">influxdb_meas</th>
                 </tr>
                 </thead>
@@ -15,7 +16,8 @@
 
                 {% for row in table %}
                     <tr>
-                        <th scope="row">{{ row.name }}</th>
+                        <th scope="row">{{ row.tag }}</th>
+                        <td>{{ row.label }}</td>
                         <td>{{ row.influxdb_meas }}</td>
                     </tr>
 

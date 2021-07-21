@@ -28,7 +28,7 @@
 
 <div class="d-flex flex-column overflow-hidden min-vh-100 vh-100">
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
             <div class="container-fluid">
                 <a class="navbar-brand" href="/">Потребление ресурсов</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -43,7 +43,7 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                                data-bs-toggle="dropdown" aria-expanded="false">
-                                Электроэнергия
+                                <i class="fas fa-bolt"></i> Электроэнергия
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                                 <li><a class="dropdown-item" href="/electricity/energy/">Потребление электроэнергии</a>
@@ -59,15 +59,29 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                                data-bs-toggle="dropdown" aria-expanded="false">
-                                Водоснабжение
+                                <i class="fas fa-tint"></i> Вода
+                            </a>
+                        </li>
+
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-wind"></i> Воздух
+                            </a>
+                        </li>
+
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-fire"></i> Газ
                             </a>
                         </li>
 
                     </ul>
                     <form class="d-flex" method="post">
                         {% csrf_token [ csrf_token] %}
-                        <button class="btn btn-outline-secondary" type="submit" name="theme"><i
-                                class="fas fa-adjust"></i></button>
+                        <button class="btn btn-outline-secondary" type="submit" name="theme">
+                            <i class="fas fa-adjust"></i></button>
                     </form>
                 </div>
             </div>

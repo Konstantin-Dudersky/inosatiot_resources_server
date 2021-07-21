@@ -12,7 +12,7 @@ from .forms import DatetimePicker
 
 
 def set_theme(request):
-    theme_light = 'sandstone'
+    theme_light = 'flatly'
     theme_dark = 'darkly'
 
     theme = request.session.get('theme', theme_dark)
@@ -27,10 +27,13 @@ def set_theme(request):
 
 
 def index(request):
+    set_theme(request)
+
     return render(request, 'index.html')
 
 
 def electricity_config(request):
+    set_theme(request)
     return render(request, 'electricity/config.html', context={'table': Config().electricity()})
 
 
@@ -40,10 +43,14 @@ def electricity_energy(request):
     plot = ''
 
     if request.method == 'POST':
-        form = DatetimePicker(request.POST, choices=Config().electricity_name_choices())
+        form = DatetimePicker(request.POST, choices=Config().electricity_label_choices())
         if form.is_valid():
+            config = Config()
+
             ts_from = datetime.datetime.combine(form.cleaned_data['from_date'], form.cleaned_data['from_time'])
             ts_to = datetime.datetime.combine(form.cleaned_data['to_date'], form.cleaned_data['to_time'])
+
+            influxdb_meas = Config().electricity[form.cleaned_data['tag']].influxdb_meas
 
             query = f"""
                     counterByTime = (table =<-, every) =>
@@ -54,17 +61,18 @@ def electricity_energy(request):
                         |> duplicate(as: "_time", column: "_start")
                         |> window(every: inf)
 
-                    from(bucket: "inosatiot_resources_sim")
+                    from(bucket: "{config.influxdb()['bucket']}")
                       |> range(start: {ts_from.isoformat()}+03:00, stop: {ts_to.isoformat()}+03:00)
-                      |> filter(fn: (r) => r["_measurement"] == "{form.cleaned_data['name']}")
+                      |> filter(fn: (r) => r["_measurement"] == "{influxdb_meas}")
                       |> filter(fn: (r) => r["_field"] == "ep_imp")
                       |> counterByTime(every: {form.cleaned_data['aggregate_window']})
                       |> yield()"""
 
-            client = InfluxDBClient(url="http://localhost:8086",
-                                    token="KKIIV60BcG5u8BYRcPMc3EaZLcvKj73FWg0i3DXkmWUQ5enQtotEVK0VNbiNgTCGQL1bz5z-mOLXoaV_Puv5XQ==",
-                                    org="Inosat"
-                                    )
+            client = InfluxDBClient(
+                url=config.influxdb()['url'],
+                token=config.influxdb()['token'],
+                org=config.influxdb()['org']
+            )
 
             df = client.query_api().query_data_frame(query)
 
@@ -144,7 +152,7 @@ def electricity_energy(request):
             'from_date': ts_from,
             'to_time': ts_to,
             'to_date': ts_to,
-        }, choices=Config().electricity_name_choices()
+        }, choices=Config().electricity_label_choices()
         )
 
     return render(request, 'electricity/energy.html',

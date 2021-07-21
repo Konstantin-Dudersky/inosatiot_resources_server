@@ -32,10 +32,10 @@
                     </div>
 
                     <div class="row mb-3">
-                        <label for="{{ form.name.id_for_label }}"
-                               class="col-2 col-form-label col-form-label-sm">{{ form.name.label }}
+                        <label for="{{ form.tag.id_for_label }}"
+                               class="col-2 col-form-label col-form-label-sm">{{ form.tag.label }}
                         </label>
-                        <div class="col-10">{{ form.name }}</div>
+                        <div class="col-10">{{ form.tag }}</div>
                     </div>
 
                     <div class="row mb-3">
@@ -50,9 +50,12 @@
                     <div class="row mb-3">
                         <div class="col-12">
                             <div class="btn-group d-flex" role="group" aria-label="Output">
-                                <button type="submit" class="btn btn-primary" name="plot">График</button>
-                                <button type="submit" class="btn btn-primary" name="table">Таблица</button>
-                                <button type="submit" class="btn btn-primary" name="excel">Excel</button>
+                                <button type="submit" class="btn btn-primary" name="plot">
+                                    <i class="fas fa-chart-line"></i> График</button>
+                                <button type="submit" class="btn btn-primary" name="table">
+                                    <i class="fas fa-table"></i> Таблица</button>
+                                <button type="submit" class="btn btn-primary" name="excel">
+                                    <i class="fas fa-file-excel"></i> Excel</button>
                             </div>
                         </div>
                     </div>
