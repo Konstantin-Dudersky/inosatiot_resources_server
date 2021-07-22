@@ -17,7 +17,7 @@ from .config import Config
 from .forms import DatetimePicker
 
 
-def set_theme(request):
+def global_view(request):
     theme = request.session.get('theme', 'dark')
 
     if 'theme' in request.POST:
@@ -90,13 +90,13 @@ def plotly_theme(global_theme: str):
 
 
 def index(request):
-    set_theme(request)
+    global_view(request)
 
     return render(request, 'index.html')
 
 
 def electricity_config(request):
-    set_theme(request)
+    global_view(request)
     return render(
         request,
         'electricity/config.html',
@@ -107,7 +107,7 @@ def electricity_config(request):
 
 
 def electricity_energy(request):
-    set_theme(request)
+    global_view(request)
 
     plot = ''
 

@@ -85,11 +85,10 @@
                         </li>
 
                     </ul>
-                    <form class="d-flex" method="post">
-                        {% csrf_token [ csrf_token] %}
-                        <button class="btn btn-outline-secondary" type="submit" name="theme">
-                            <i class="fas fa-adjust"></i></button>
-                    </form>
+                    <a class="btn btn-primary" data-bs-toggle="offcanvas" href="#offcanvasExample" role="button"
+                       aria-controls="offcanvasExample">
+                        <i class="fas fa-gear"></i>
+                    </a>
                 </div>
             </div>
         </nav>
@@ -106,12 +105,33 @@
 </div>
 
 
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="offcanvasExampleLabel">Настройки</h5>
+        <button type="button" class="btn-close {% if request.session.theme == 'white' %} btn-close-white {% endif %}" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="row">
+            <div class="col-12">
+                <form class="d-flex" method="post">
+                    {% csrf_token [ csrf_token] %}
+                    <fieldset>
+                        <button class="btn btn-primary" type="submit" name="theme">
+                            <i class="fas fa-adjust"></i> Тема
+                        </button>
+                    </fieldset>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
 <script>
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
+    });
 
 </script>
 
