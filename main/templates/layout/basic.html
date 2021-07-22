@@ -6,10 +6,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    {% if request.session.theme == 'darkly' %}
+    {% if request.session.theme == 'dark' %}
         <link href="{% static 'css/bootstrap.darkly.min.css' %}" rel="stylesheet">
     {% endif %}
-    {% if request.session.theme == 'flatly' %}
+    {% if request.session.theme == 'white' %}
         <link href="{% static 'css/bootstrap.flatly.min.css' %}" rel="stylesheet">
     {% endif %}
     {% if request.session.theme == 'sandstone' %}
@@ -73,7 +73,14 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-fire"></i> Газ
+                                <i class="fas fa-fire-flame-simple"></i> Газ
+                            </a>
+                        </li>
+
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-temperature-empty"></i> Тепло
                             </a>
                         </li>
 
@@ -93,13 +100,20 @@
             {% endblock %}
         </div>
     </main>
-    <footer class="container-fluid flex-grow-0 flex-shrink-1">
-        ...
+    <footer class="container-fluid flex-grow-0 flex-shrink-1 bg-primary">
+        <span class="text-primary">.</span>
     </footer>
 </div>
 
 
 <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+
+</script>
 
 </body>
 </html>

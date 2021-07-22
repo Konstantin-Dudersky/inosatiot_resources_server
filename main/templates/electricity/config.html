@@ -2,8 +2,12 @@
 
 {% block content %}
     <div class="row pt-2">
+
         <div class="col-12">
-            <table class="table">
+
+            <p class="lead">Счетчики</p>
+
+            <table class="table table-hover">
                 <thead>
                 <tr>
                     <th scope="col">tag</th>
@@ -13,15 +17,44 @@
                 </thead>
                 <tbody>
 
-
-                {% for row in table %}
+                {% for tag, value in table_e.items %}
                     <tr>
-                        <th scope="row">{{ row.tag }}</th>
-                        <td>{{ row.label }}</td>
-                        <td>{{ row.influxdb_meas }}</td>
+                        <th scope="row">{{ tag }}</th>
+                        <td>{{ value.label }}</td>
+                        <td>{{ value.influxdb_meas }}</td>
                     </tr>
-
                 {% endfor %}
+
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+    <div class="row pt-2">
+
+        <div class="col-12">
+
+            <p class="lead">Группы счетчиков</p>
+
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th scope="col">tag</th>
+                    <th scope="col">label</th>
+                    <th scope="col">formula</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                {% for tag, value in table_eg.items %}
+                    <tr>
+                        <th scope="row">{{ tag }}</th>
+                        <td>{{ value.label }}</td>
+                        <td>{{ value.formula }}</td>
+                    </tr>
+                {% endfor %}
+
                 </tbody>
 
             </table>

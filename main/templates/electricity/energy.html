@@ -1,7 +1,7 @@
 {% extends "layout/basic.html" %}
 
 {% block content %}
-    <div class="row pt-3">
+    <div class="row pt-3 h-100">
         <div class="col-3">
             <form class="m-0" method="post">
                 {% csrf_token [ csrf_token] %}
@@ -47,19 +47,42 @@
                         </div>
                     </div>
 
+                    <hr/>
                     <div class="row mb-3">
-                        <div class="col-12">
+                        <div class="col-2">
+                            <label class="col-form-label col-form-label-sm">График</label>
+                        </div>
+                        <div class="col-10">
                             <div class="btn-group d-flex" role="group" aria-label="Output">
-                                <button type="submit" class="btn btn-primary" name="plot">
-                                    <i class="fas fa-chart-line"></i> График</button>
-                                <button type="submit" class="btn btn-primary" name="table">
-                                    <i class="fas fa-table"></i> Таблица</button>
-                                <button type="submit" class="btn btn-primary" name="excel">
-                                    <i class="fas fa-file-excel"></i> Excel</button>
+                                <button type="submit" class="btn btn-primary" name="plot_show">
+                                    <i class="fas fa-up-right-from-square"></i> Показать
+                                </button>
+                                <button type="submit" class="btn btn-primary" name="plot_png"
+                                        data-bs-toggle="tooltip" data-bs-placement="top"
+                                        title="Загрузить график в формате png">
+                                    <i class="fas fa-file-image"></i> png
+                                </button>
                             </div>
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-2">
+                            <label class="col-form-label col-form-label-sm">Таблица</label>
+                        </div>
+                        <div class="col-10">
+                            <div class="btn-group d-flex" role="group" aria-label="Output">
+                                <button type="submit" class="btn btn-primary" name="table_show">
+                                    <i class="fas fa-up-right-from-square"></i> Показать
+                                </button>
+                                <button type="submit" class="btn btn-primary" name="table_excel"
+                                        data-bs-toggle="tooltip" data-bs-placement="top"
+                                        title="Загрузить таблицу в формате excel">
+                                    <i class="fas fa-file-excel"></i> excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                 </fieldset>
 
@@ -67,11 +90,10 @@
         </div>
 
 
-        <div class="col-9">
+        <div class="col-9 table-responsive" id="content">
             {% autoescape off %}
                 {{ plot }}
             {% endautoescape %}
-
         </div>
 
     </div>

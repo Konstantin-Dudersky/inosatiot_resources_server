@@ -4,8 +4,9 @@ influxdb:
   token: KKIIV60BcG5u8BYRcPMc3EaZLcvKj73FWg0i3DXkmWUQ5enQtotEVK0VNbiNgTCGQL1bz5z-mOLXoaV_Puv5XQ==
   bucket: inosatiot_resources_sim
 
-#  поля tag в группах electricity и electricity_groups должны быть уникальны
-# поля должны начинаться:
+# ----------------------------------------------------------------------------------------------------
+# поля tag должны быть уникальны
+# tag должны начинаться:
 # e_* - электроэнергия
 # eg_* - группы по электроэнергии
 # w_* - вода
@@ -22,12 +23,18 @@ electricity:
   - tag: e_infeed2
     label: Ввод 2
     influxdb_meas: counter2
+  - tag: e_light01
+    label: Освещение
+    influxdb_meas: counter3
 
 electricity_groups:
   - tag: eg_overall
     label: Общее потребление
-    formula: e_infeed1 + e_infeed2
+    formula: e_infeed1 + e_infeed2 + e_light01
 
 water:
   - water1
   - water2
+
+
+# ----------------------------------------------------------------------------------------------------
