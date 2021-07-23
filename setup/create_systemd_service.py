@@ -16,7 +16,7 @@ User={getpass.getuser()}
 Group={getpass.getuser()}
 EnvironmentFile=/etc/environment
 WorkingDirectory={path}
-ExecStart={path}/venv/bin/daphne {path}/inosatiot_resources_server.asgi:application
+ExecStart={path}/venv/bin/daphne -b 0.0.0.0 -p 8080 inosatiot_resources_server.asgi:application
 
 [Install]
 WantedBy=multi-user.target"""

@@ -16,7 +16,7 @@ class eg:
 class Config:
 
     def __init__(self):
-        with open('config.yaml') as stream:
+        with open('../config_inosatiot_resources_server.yaml') as stream:
             self._config = yaml.safe_load(stream)
 
         self.e = {}

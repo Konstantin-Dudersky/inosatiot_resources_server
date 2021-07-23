@@ -26,15 +26,15 @@
     
 4. После установки можно запустить на выполнение через systemd
    
-        $ sudo systemctl start config_inosatiot_resources_sim.service  // запустить
-        $ sudo systemctl stop config_inosatiot_resources_sim.service  // остановить
-        $ sudo systemctl restart config_inosatiot_resources_sim.service  // перезапустить
-        $ sudo systemctl status config_inosatiot_resources_sim.service  // просмотреть статус
+        $ sudo systemctl start config_inosatiot_resources_server.service  // запустить
+        $ sudo systemctl stop config_inosatiot_resources_server.service  // остановить
+        $ sudo systemctl restart config_inosatiot_resources_server.service  // перезапустить
+        $ sudo systemctl status config_inosatiot_resources_server.service  // просмотреть статус
 
 # Обновить проект
 - Синхронизировать проект с github (локальные изменения теряются)
    
-        $ cd ~/inosatiot/inosatiot_resources_sim/
+        $ cd ~/inosatiot/inosatiot_resources_server/
         $ git fetch origin && git reset --hard origin/master && git clean -f -d
         $ chmod +x setup/setup.sh && setup/setup.sh
 
