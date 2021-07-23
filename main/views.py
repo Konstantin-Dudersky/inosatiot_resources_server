@@ -1,6 +1,5 @@
 import datetime
 import re
-from _string import formatter_field_name_split
 from io import BytesIO
 
 import numpy as np
@@ -8,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytz
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import FileResponse
 from django.shortcuts import render
 from influxdb_client import InfluxDBClient
 from plotly.graph_objects import layout
@@ -82,11 +81,126 @@ def df_apply_formula(row, formula1):
         return np.NaN
 
 
-def plotly_theme(global_theme: str):
+def get_plotly_template(global_theme: str):
     if global_theme == 'white':
         return 'ggplot2'
     elif global_theme == 'dark':
         return 'plotly_dark'
+
+
+def get_filename(label, ts_from, ts_to):
+    filename = f"Электроэнергия _ {label} _ " \
+               f"{ts_from.isoformat(sep=' ', timespec='minutes')} - " \
+               f"{ts_to.isoformat(sep=' ', timespec='minutes')}"
+    filename = filename.replace(':', '-')
+    return filename
+
+
+def output_plot_show(df, title, plotly_template):
+    plot = go.Figure(
+        data=df_columns_to_scatter_data(df),
+        layout=go.Layout(
+            legend=dict(
+                yanchor="top",
+                y=-0.1,
+                xanchor="left",
+                x=0
+            ),
+            template=plotly_template,
+            title=title,
+            yaxis=layout.YAxis(
+                title="кВтч"
+            ),
+        )
+    ).to_html(
+        full_html=False,
+        config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
+    )
+
+    plot = '<div class="h-100 pb-4">' + plot[5:]
+
+    return plot
+
+
+def output_plot_png(df, title, filename):
+    plot = go.Figure(
+        data=df_columns_to_scatter_data(df),
+        layout=go.Layout(
+            legend=dict(
+                yanchor="top",
+                y=-0.1,
+                xanchor="left",
+                x=0
+            ),
+            template='plotly_white',
+            title=title,
+            yaxis=layout.YAxis(
+                title="кВтч"
+            )
+        ),
+    ).to_image(format='png', width=1200, height=800)
+
+    response = FileResponse(
+        BytesIO(plot),
+        as_attachment=True,
+        content_type="image/png",
+        filename=filename)
+
+    return response
+
+
+def output_table_show(df):
+    df.index = df.index.strftime('%Y-%m-%d %H:%M')
+
+    df.loc["Минимум"] = df.min(numeric_only=True)
+    df.loc["Среднее"] = df.mean(numeric_only=True)
+    df.loc["Максимум"] = df.max(numeric_only=True)
+    df.loc["Сумма"] = df.sum(numeric_only=True)
+
+    plot = df.to_html(
+        classes=['table', 'table-hover', ],
+        justify='left',
+        float_format='{:.1f}'.format
+    )
+
+    return plot
+
+
+def output_table_excel(df, filename, ts_from, ts_to):
+    df.index = df.index.tz_localize(None)
+
+    df.loc["Минимум"] = df.min(numeric_only=True)
+    df.loc["Среднее"] = df.mean(numeric_only=True)
+    df.loc["Максимум"] = df.max(numeric_only=True)
+    df.loc["Сумма"] = df.sum(numeric_only=True)
+
+    buffer = BytesIO()
+    writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
+
+    df.to_excel(
+        writer,
+        index=True,
+        sheet_name='Sheet1',
+        startrow=4
+    )
+    worksheet = writer.sheets['Sheet1']
+
+    worksheet.write(0, 0, 'Потребление электроэнергии')
+    worksheet.write(1, 0, 'от')
+    worksheet.write(1, 1, ts_from.isoformat(sep=' ', timespec='minutes'))
+    worksheet.write(2, 0, 'до')
+    worksheet.write(2, 1, ts_to.isoformat(sep=' ', timespec='minutes'))
+
+    writer.save()
+    buffer.seek(0)
+
+    response = FileResponse(
+        buffer,
+        as_attachment=True,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        filename=filename + '.xlsx')
+
+    return response
 
 
 def index(request):
@@ -135,74 +249,31 @@ def electricity_energy(request):
                     measurement=config.e[tag].influxdb_meas,
                     aggregate_window=form.cleaned_data['aggregate_window'])
 
-                if 'plot_show' in request.POST:
-                    df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop'])
-                    df = df.set_index('_time')
-                    df = df.rename(columns={'_value': config.e[tag].label})
+                df['_value'] = pd.to_numeric(df['_value'])
 
-                    plot = go.Figure(
-                        data=df_columns_to_scatter_data(df),
-                        layout=go.Layout(
-                            template='plotly_' + request.session['theme'],
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)'
-                        )
-                    ).to_html(
-                        full_html=False,
-                        # default_height=700,
-                        config={'displayModeBar': True}
-                    )
+                # переименовываем стобцы
+                df = df.rename(columns={'_value': config.e[tag].label})
+
+                df = df.set_index('_time')
+                df.index = df.index.tz_convert(settings.TIME_ZONE)
+                df.index = df.index.rename('Время')
+
+                df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop'])
+
+                # имя файла для экспорта
+                filename = get_filename(config.e[tag].label, ts_from, ts_to)
+
+                if 'plot_show' in request.POST:
+                    plot = output_plot_show(df, config.e[tag].label, get_plotly_template(request.session['theme']))
+
+                elif 'plot_png' in request.POST:
+                    return output_plot_png(df, config.e[tag].label, filename + ".png")
 
                 elif 'table_show' in request.POST:
-                    df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop'])
-                    df = df.set_index('_time')
-                    df.index = df.index.tz_convert(settings.TIME_ZONE)
-                    df.index = df.index.strftime('%Y-%m-%d %H:%M')
-
-                    plot = df.to_html(
-                        classes=['table', 'table-hover'],
-                    )
+                    plot = output_table_show(df)
 
                 elif 'table_excel' in request.POST:
-                    df = df.drop(columns=['result', 'table', '_measurement', ])
-                    df['_value'] = pd.to_numeric(df['_value'])
-
-                    df_excel = df
-
-                    df_excel['_time'] = df_excel['_time'].dt.tz_localize(None)
-                    df_excel['_start'] = df_excel['_start'].dt.tz_convert(settings.TIME_ZONE)
-                    df_excel['_start'] = df_excel['_start'].dt.tz_localize(None)
-                    df_excel['_stop'] = df_excel['_stop'].dt.tz_convert(settings.TIME_ZONE)
-                    df_excel['_stop'] = df_excel['_stop'].dt.tz_localize(None)
-
-                    with BytesIO() as b:
-                        # Use the StringIO object as the filehandle.
-                        writer = pd.ExcelWriter(b, engine='xlsxwriter')
-                        df.to_excel(writer,
-                                    columns=['_time', '_value'],
-                                    header=['Нагрузка', 'Потребление'],
-                                    index=False,
-                                    sheet_name='Sheet1',
-                                    startrow=4
-                                    )
-
-                        worksheet = writer.sheets['Sheet1']
-
-                        worksheet.write(0, 0, 'Потребление электроэнергии')
-                        worksheet.write(1, 0, 'от')
-                        worksheet.write(1, 1, f"{df_excel.iloc[0, df_excel.columns.get_loc('_start')]:%Y-%m-%d %H:%M}")
-                        worksheet.write(2, 0, 'до')
-                        worksheet.write(2, 1, f"{df_excel.iloc[0, df_excel.columns.get_loc('_stop')]:%Y-%m-%d %H:%M}")
-
-                        writer.save()
-                        # Set up the Http response.
-                        filename = 'energy.xlsx'
-                        response = HttpResponse(
-                            b.getvalue(),
-                            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                        )
-                        response['Content-Disposition'] = 'attachment; filename=%s' % filename
-                        return response
+                    return output_table_excel(df, filename, ts_from, ts_to)
 
             elif tag in config.eg:
                 # определяем, какие теги используются в формуле
@@ -246,68 +317,21 @@ def electricity_energy(request):
                 df_total.index = df_total.index.tz_convert(settings.TIME_ZONE)
                 df_total.index = df_total.index.rename('Время')
 
-                if 'plot_show' in request.POST:
-                    plot = go.Figure(
-                        data=df_columns_to_scatter_data(df_total),
-                        layout=go.Layout(
-                            legend=dict(
-                                yanchor="top",
-                                y=-0.1,
-                                xanchor="left",
-                                x=0
-                            ),
-                            template=plotly_theme(request.session['theme']),
-                            title=config.eg[tag].label,
-                            yaxis=layout.YAxis(
-                                title="кВтч"
-                            ),
-                        ),
-                    ).to_html(
-                        full_html=False,
-                        config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
-                    )
+                # имя файла для экспорта
+                filename = get_filename(config.eg[tag].label, ts_from, ts_to)
 
-                    plot = '<div class="h-100 pb-4">' + plot[5:]
+                if 'plot_show' in request.POST:
+                    plot = output_plot_show(df_total, config.eg[tag].label,
+                                            get_plotly_template(request.session['theme']))
 
                 elif 'plot_png' in request.POST:
-                    plot = go.Figure(
-                        data=df_columns_to_scatter_data(df_total),
-                        layout=go.Layout(
-                            legend=dict(
-                                yanchor="top",
-                                y=-0.1,
-                                xanchor="left",
-                                x=0
-                            ),
-                            template='plotly_white',
-                            title=config.eg[tag].label,
-                            yaxis=layout.YAxis(
-                                title="кВтч"
-                            )
-                        ),
-                    ).to_image(format='png', width=1200, height=800)
+                    return output_plot_png(df_total, config.eg[tag].label, filename + ".png")
 
-                    filename = 'energy.png'
-                    response = HttpResponse(
-                        plot,
-                        content_type='image/png'
-                    )
-                    response['Content-Disposition'] = 'attachment; filename=%s' % filename
-                    return response
                 elif 'table_show' in request.POST:
-                    df_total.index = df_total.index.tz_convert(settings.TIME_ZONE)
-                    df_total.index = df_total.index.strftime('%Y-%m-%d %H:%M')
+                    plot = output_table_show(df_total)
 
-                    df_total.loc["Минимум"] = df_total.min(numeric_only=True)
-                    df_total.loc["Среднее"] = df_total.mean(numeric_only=True)
-                    df_total.loc["Максимум"] = df_total.max(numeric_only=True)
-                    df_total.loc["Сумма"] = df_total.sum(numeric_only=True)
-
-                    plot = df_total.to_html(
-                        classes=['table', 'table-hover', ],
-                        justify='left',
-                        float_format='{:.1f}'.format
-                    )
+                elif 'table_excel' in request.POST:
+                    return output_table_excel(df_total, filename, ts_from, ts_to)
 
     else:
         ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
