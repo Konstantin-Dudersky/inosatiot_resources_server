@@ -152,10 +152,15 @@ def output_plot_png(df, title, filename):
 def output_table_show(df):
     df.index = df.index.strftime('%Y-%m-%d %H:%M')
 
-    df.loc["Минимум"] = df.min(numeric_only=True)
-    df.loc["Среднее"] = df.mean(numeric_only=True)
-    df.loc["Максимум"] = df.max(numeric_only=True)
-    df.loc["Сумма"] = df.sum(numeric_only=True)
+    stat_min = df.min(numeric_only=True)
+    stat_mean = df.mean(numeric_only=True)
+    stat_max = df.max(numeric_only=True)
+    stat_sum = df.sum(numeric_only=True)
+
+    df.loc["Минимум"] = stat_min
+    df.loc["Среднее"] = stat_mean
+    df.loc["Максимум"] = stat_max
+    df.loc["Сумма"] = stat_sum
 
     plot = df.to_html(
         classes=['table', 'table-hover', ],
@@ -169,10 +174,15 @@ def output_table_show(df):
 def output_table_excel(df, filename, ts_from, ts_to):
     df.index = df.index.tz_localize(None)
 
-    df.loc["Минимум"] = df.min(numeric_only=True)
-    df.loc["Среднее"] = df.mean(numeric_only=True)
-    df.loc["Максимум"] = df.max(numeric_only=True)
-    df.loc["Сумма"] = df.sum(numeric_only=True)
+    stat_min = df.min(numeric_only=True)
+    stat_mean = df.mean(numeric_only=True)
+    stat_max = df.max(numeric_only=True)
+    stat_sum = df.sum(numeric_only=True)
+
+    df.loc["Минимум"] = stat_min
+    df.loc["Среднее"] = stat_mean
+    df.loc["Максимум"] = stat_max
+    df.loc["Сумма"] = stat_sum
 
     buffer = BytesIO()
     writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
