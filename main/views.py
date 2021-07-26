@@ -297,11 +297,15 @@ def electricity_energy(request):
             elif tag in config.eg:
                 # определяем, какие теги используются в формуле
                 formula = config.eg[tag].formula
-                formula_tr = formula.translate({ord(c): ' ' for c in "()+-/*"}).strip()
-                tags = set(re.split(' +', formula_tr))
+                tags = set(re.split(' +', formula.translate({ord(c): ' ' for c in "()+-/*"}).strip()))
 
-                for t in tags:
-                    formula = formula.replace(t, f"row['{t}']")
+                # заменим теги в формуле: tag -> row['tag']
+                formula_for_apply = ''
+                for t in re.split(' +', formula.translate({ord(c): f' {c} ' for c in "()+-/*"}).strip()):
+                    if len(t) > 2:
+                        formula_for_apply += f"row['{t}']"
+                    else:
+                        formula_for_apply += t
 
                 # запрашиваем отдельные столбцы
                 df = {}
@@ -324,7 +328,7 @@ def electricity_energy(request):
                         df_total = df_total.merge(on='_time', right=df[key], how='outer')
 
                 df_total = df_total.fillna(0)
-                df_total[config.eg[tag].label] = df_total.apply(df_apply_formula, args=(formula,), axis=1)
+                df_total[config.eg[tag].label] = df_total.apply(df_apply_formula, args=(formula_for_apply,), axis=1)
 
                 # переименовываем стобцы
                 for t in tags:
