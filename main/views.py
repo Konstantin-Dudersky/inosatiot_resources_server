@@ -60,7 +60,14 @@ def query_data(config: Config,
 
 def df_columns_to_scatter_data(df: pd.DataFrame):
     data = []
+
+    # если графиков несколько, запоминаем имя последнего столбца
+    # чтобы не включать его в группу stackgroup
+    last_col = '' if len(df.columns) == 1 else df.columns[-1]
+
     for col in df.columns:
+        stackgroup = '' if col == last_col else 'stackgroup'
+
         data.append(
             go.Scatter(
                 x=df.index,
@@ -68,7 +75,8 @@ def df_columns_to_scatter_data(df: pd.DataFrame):
                 line=dict(
                     shape='vh'
                 ),
-                name=col
+                name=col,
+                stackgroup=stackgroup,
             )
         )
     return data
@@ -265,6 +273,7 @@ def electricity_energy(request):
                 df = df.rename(columns={'_value': config.e[tag].label})
 
                 df = df.set_index('_time')
+                df = df.sort_index(axis=0)
                 df.index = df.index.tz_convert(settings.TIME_ZONE)
                 df.index = df.index.rename('Время')
 
@@ -316,7 +325,6 @@ def electricity_energy(request):
 
                 df_total = df_total.fillna(0)
                 df_total[config.eg[tag].label] = df_total.apply(df_apply_formula, args=(formula,), axis=1)
-                df_total = df_total.sort_index(axis=0)
 
                 # переименовываем стобцы
                 for t in tags:
@@ -324,6 +332,7 @@ def electricity_energy(request):
                         df_total = df_total.rename(columns={t: config.e[t].label})
 
                 df_total = df_total.set_index('_time')
+                df_total = df_total.sort_index(axis=0)
                 df_total.index = df_total.index.tz_convert(settings.TIME_ZONE)
                 df_total.index = df_total.index.rename('Время')
 
