@@ -267,6 +267,9 @@ def electricity_energy(request):
                     measurement=config.e[tag].influxdb_meas,
                     aggregate_window=form.cleaned_data['aggregate_window'])
 
+                print(df)
+                df.info()
+
                 df['_value'] = pd.to_numeric(df['_value'])
 
                 # переименовываем стобцы

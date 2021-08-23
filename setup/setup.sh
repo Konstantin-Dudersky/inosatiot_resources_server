@@ -2,7 +2,7 @@
 
 echo
 echo "-----> Python version:"
-python3 -V
+python3.9 -V
 
 echo
 echo "-----> Updating system:"
@@ -16,21 +16,21 @@ sudo apt install -y python3-venv
 
 echo
 echo "-----> Create virtual environment:"
-python3 -m venv venv
+python3.9 -m venv venv
 source venv/bin/activate
-python3 -m pip install -r setup/requirements.txt
+python3.9 -m pip install -r setup/requirements.txt
 
 echo
 echo "-----> Execute collectstatic:"
-python3 manage.py collectstatic
+python3.9 manage.py collectstatic
 
 echo
 echo "-----> Execute first migration:"
-python3 manage.py migrate
+python3.9 manage.py migrate
 
 echo
 echo "-----> Create systemd service:"
-python3 setup/create_systemd_service.py
+python3.9 setup/create_systemd_service.py
 sudo mv setup/inosatiot_resources_server.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl enable inosatiot_resources_server.service
