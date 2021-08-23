@@ -12,6 +12,7 @@ def download_file(download_url, filename):
     file = open(filename, 'wb')
     file.write(response.read())
     file.close()
+    print(f"File loaded: {filename}")
 
 
 # js
