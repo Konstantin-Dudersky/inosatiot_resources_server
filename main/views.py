@@ -1,5 +1,6 @@
 import datetime
 import re
+import sys
 from io import BytesIO
 
 import numpy as np
@@ -14,6 +15,12 @@ from plotly.graph_objects import layout
 
 from .config import Config
 from .forms import DatetimePicker
+
+from loguru import logger
+
+logger.remove()
+logger.add(sys.stderr, level='DEBUG')
+logger.add('logs/log.txt', level='INFO', rotation='5 MB')
 
 
 def global_view(request):
@@ -32,22 +39,16 @@ def query_data(config: Config,
                ts_from: datetime.datetime,
                ts_to: datetime.datetime,
                measurement: str,
-               aggregate_window: str):
+               aggregate_window: str) -> pd.DataFrame:
     query = f"""
-        counterByTime = (table =<-, every) =>
-          table
-            |> window(every: every, createEmpty: true)
-            |> increase()
-            |> last()
-            |> duplicate(as: "_time", column: "_start")
-            |> window(every: inf)
-
         from(bucket: "{config.influxdb()['bucket']}")
           |> range(start: {ts_from.isoformat()}, stop: {ts_to.isoformat()})
           |> filter(fn: (r) => r["_measurement"] == "{measurement}")
           |> filter(fn: (r) => r["_field"] == "ep_imp")
-          |> counterByTime(every: {aggregate_window})
+          |> filter(fn: (r) => r["aggwindow"] == "{aggregate_window}")
           |> yield()"""
+
+    logger.trace(f"flux query: {query}")
 
     client = InfluxDBClient(
         url=config.influxdb()['url'],
@@ -91,7 +92,7 @@ def df_apply_formula(row, formula1):
 
 def get_plotly_template(global_theme: str):
     if global_theme == 'white':
-        return 'ggplot2'
+        return 'seaborn'
     elif global_theme == 'dark':
         return 'plotly_dark'
 
@@ -245,6 +246,7 @@ def electricity_energy(request):
 
     if request.method == 'POST':
         form = DatetimePicker(request.POST, choices=Config().electricity_label_choices())
+
         if form.is_valid():
             config = Config()
 
@@ -257,7 +259,21 @@ def electricity_energy(request):
             ts_from = tzinfo.localize(ts_from)
             ts_to = tzinfo.localize(ts_to)
 
+            if ts_from >= ts_to:
+                return render(
+                    request, 'electricity/energy.html',
+                    context={
+                        'plot': f"""
+                            <div class='alert alert-danger' role='alert'>
+                                Конечная дата должна быть больше начальной!
+                            </div>""",
+                        'form': form,
+                    })
+
             tag = form.cleaned_data['tag']
+
+            logger.debug(f"try to load tag: {tag}, from: {ts_from}, to: {ts_to},"
+                         f"aggwindow: {form.cleaned_data['aggregate_window']}")
 
             if tag in config.e:
                 df = query_data(
@@ -267,8 +283,19 @@ def electricity_energy(request):
                     measurement=config.e[tag].influxdb_meas,
                     aggregate_window=form.cleaned_data['aggregate_window'])
 
-                print(df)
-                df.info()
+                # print(df)
+                # df.info()
+
+                if len(df) == 0:
+                    return render(
+                        request, 'electricity/energy.html',
+                        context={
+                            'plot': f"""
+                                <div class='alert alert-danger' role='alert'>
+                                    По указанным параметрам данных нет!
+                                </div>""",
+                            'form': form,
+                        })
 
                 df['_value'] = pd.to_numeric(df['_value'])
 
@@ -280,7 +307,8 @@ def electricity_energy(request):
                 df.index = df.index.tz_convert(settings.TIME_ZONE)
                 df.index = df.index.rename('Время')
 
-                df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop'])
+                df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop',
+                                      'aggfunc', 'aggwindow', 'datatype'])
 
                 # имя файла для экспорта
                 filename = get_filename(config.e[tag].label, ts_from, ts_to)
@@ -319,7 +347,8 @@ def electricity_energy(request):
                         ts_to=ts_to,
                         measurement=config.e[t].influxdb_meas,
                         aggregate_window=form.cleaned_data['aggregate_window'])
-                    df[t] = df[t].drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop'])
+                    df[t] = df[t].drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop',
+                                                'aggfunc', 'aggwindow', 'datatype'])
                     df[t] = df[t].rename(columns={'_value': t})
 
                 # объединяем столбцы в один датафрейм

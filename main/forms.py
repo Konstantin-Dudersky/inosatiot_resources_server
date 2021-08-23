@@ -34,7 +34,7 @@ class DatetimePicker(forms.Form):
 
     aggregate_window = forms.ChoiceField(
         label='Интервал',
-        choices=[('3m', '3 минуты'), ('30m', '30 минут'), ('1d', '1 день'), ('1m', '1 месяц'), ('1y', '1 год')],
+        choices=[('3T', '3 минуты'), ('30T', '30 минут'), ('1D', '1 день'), ('1M', '1 месяц'), ('1Y', '1 год')],
         widget=forms.Select(
             attrs={'class': 'form-select form-select-sm'},
         ),
