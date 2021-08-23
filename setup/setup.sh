@@ -21,6 +21,10 @@ source venv/bin/activate
 python3.9 -m pip install -r setup/requirements.txt
 
 echo
+echo "-----> Load static files from internet:"
+python3.9 setup/load_static_files.py
+
+echo
 echo "-----> Execute collectstatic:"
 python3.9 manage.py collectstatic
 

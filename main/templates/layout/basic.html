@@ -7,13 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     {% if request.session.theme == 'dark' %}
-        <link href="{% static 'css/bootstrap.darkly.min.css' %}" rel="stylesheet">
+        <link href="{% static 'css/bootstrap/bootstrap.darkly.min.css' %}" rel="stylesheet">
     {% endif %}
     {% if request.session.theme == 'white' %}
-        <link href="{% static 'css/bootstrap.flatly.min.css' %}" rel="stylesheet">
+        <link href="{% static 'css/bootstrap/bootstrap.flatly.min.css' %}" rel="stylesheet">
     {% endif %}
     {% if request.session.theme == 'sandstone' %}
-        <link href="{% static 'css/bootstrap.sandstone.min.css' %}" rel="stylesheet">
+        <link href="{% static 'css/bootstrap/bootstrap.sandstone.min.css' %}" rel="stylesheet">
     {% endif %}
 
     <script src="{% static 'fontawesomefree/js/all.min.js' %}"></script>
@@ -110,7 +110,9 @@
 <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="offcanvasExampleLabel">Настройки</h5>
-        <button type="button" class="btn-close {% if request.session.theme == 'white' %} btn-close-white {% endif %}" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <button type="button" class="btn-close {% if request.session.theme == 'white' %} btn-close-white {% endif %}"
+                data-bs-dismiss="offcanvas" aria-label="Close">
+        </button>
     </div>
     <div class="offcanvas-body">
         <div class="row">
