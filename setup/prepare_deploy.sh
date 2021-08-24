@@ -4,5 +4,6 @@ echo
 echo "-----> Create requirements.txt:"
 pip freeze >setup/requirements.txt
 
-
-# TODO - Debug = False в настройках
+echo
+echo "-----> Replace Debug = True"
+python3 setup/lib/replace_debug_true.py

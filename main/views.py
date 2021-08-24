@@ -33,7 +33,6 @@ def global_view(request):
             theme = 'white'
 
     request.session['theme'] = theme
-    request.session['theme'] = 'white'  # TODO - пока bootswatch не починят offcanvas
 
 
 def query_data(config: Config,
