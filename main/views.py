@@ -11,12 +11,11 @@ from django.conf import settings
 from django.http import FileResponse
 from django.shortcuts import render
 from influxdb_client import InfluxDBClient
+from loguru import logger
 from plotly.graph_objects import layout
 
 from .config import Config
 from .forms import DatetimePicker
-
-from loguru import logger
 
 logger.remove()
 logger.add(sys.stderr, level='DEBUG')
@@ -39,13 +38,17 @@ def query_data(config: Config,
                ts_from: datetime.datetime,
                ts_to: datetime.datetime,
                measurement: str,
-               aggregate_window: str) -> pd.DataFrame:
+               field: str,
+               aggwindow: str,
+               aggfunc: str,
+               ) -> pd.DataFrame:
     query = f"""
         from(bucket: "{config.influxdb()['bucket']}")
           |> range(start: {ts_from.isoformat()}, stop: {ts_to.isoformat()})
           |> filter(fn: (r) => r["_measurement"] == "{measurement}")
-          |> filter(fn: (r) => r["_field"] == "ep_imp")
-          |> filter(fn: (r) => r["aggwindow"] == "{aggregate_window}")
+          |> filter(fn: (r) => r["_field"] == "{field}")
+          |> filter(fn: (r) => r["aggwindow"] == "{aggwindow}")
+          |> filter(fn: (r) => r["aggfunc"] == "{aggfunc}")
           |> yield()"""
 
     logger.trace(f"flux query: {query}")
@@ -53,7 +56,7 @@ def query_data(config: Config,
     client = InfluxDBClient(
         url=config.influxdb()['url'],
         token=config.influxdb()['token'],
-        org=config.influxdb()['org']
+        org=config.influxdb()['org'],
     )
 
     return client.query_api().query_data_frame(query)
@@ -105,7 +108,10 @@ def get_filename(label, ts_from, ts_to):
     return filename
 
 
-def output_plot_show(df, title, plotly_template):
+def output_plot_show(df: pd.DataFrame,
+                     layout_title: str,
+                     layout_yaxis_title: str,
+                     plotly_template: str):
     plot = go.Figure(
         data=df_columns_to_scatter_data(df),
         layout=go.Layout(
@@ -116,9 +122,9 @@ def output_plot_show(df, title, plotly_template):
                 x=0
             ),
             template=plotly_template,
-            title=title,
+            title=layout_title,
             yaxis=layout.YAxis(
-                title="кВтч"
+                title=layout_yaxis_title
             ),
         )
     ).to_html(
@@ -131,7 +137,12 @@ def output_plot_show(df, title, plotly_template):
     return plot
 
 
-def output_plot_png(df, title, filename):
+def output_plot_png(
+        df: pd.DataFrame,
+        layout_title: str,
+        layout_yaxis_title: str,
+        filename: str,
+):
     plot = go.Figure(
         data=df_columns_to_scatter_data(df),
         layout=go.Layout(
@@ -142,9 +153,9 @@ def output_plot_png(df, title, filename):
                 x=0
             ),
             template='plotly_white',
-            title=title,
+            title=layout_title,
             yaxis=layout.YAxis(
-                title="кВтч"
+                title=layout_yaxis_title
             )
         ),
     ).to_image(format='png', width=1200, height=800)
@@ -267,6 +278,7 @@ def electricity_energy(request):
                             <div class='alert alert-danger' role='alert'>
                                 Конечная дата должна быть больше начальной!
                             </div>""",
+                        'form_header': 'Потребление ЭЭ',
                         'form': form,
                     })
 
@@ -281,10 +293,10 @@ def electricity_energy(request):
                     ts_from=ts_from,
                     ts_to=ts_to,
                     measurement=config.e[tag].influxdb_meas,
-                    aggregate_window=form.cleaned_data['aggregate_window'])
-
-                # print(df)
-                # df.info()
+                    field="ep_imp",
+                    aggwindow=form.cleaned_data['aggregate_window'],
+                    aggfunc='sum',
+                )
 
                 if len(df) == 0:
                     return render(
@@ -294,6 +306,7 @@ def electricity_energy(request):
                                 <div class='alert alert-danger' role='alert'>
                                     По указанным параметрам данных нет!
                                 </div>""",
+                            'form_header': 'Потребление ЭЭ',
                             'form': form,
                         })
 
@@ -314,10 +327,20 @@ def electricity_energy(request):
                 filename = get_filename(config.e[tag].label, ts_from, ts_to)
 
                 if 'plot_show' in request.POST:
-                    plot = output_plot_show(df, config.e[tag].label, get_plotly_template(request.session['theme']))
+                    plot = output_plot_show(
+                        df=df,
+                        layout_title=config.e[tag].label,
+                        layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
+                        plotly_template=get_plotly_template(request.session['theme'])
+                    )
 
                 elif 'plot_png' in request.POST:
-                    return output_plot_png(df, config.e[tag].label, filename + ".png")
+                    return output_plot_png(
+                        df=df,
+                        layout_title=config.e[tag].label,
+                        layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
+                        filename=filename + ".png",
+                    )
 
                 elif 'table_show' in request.POST:
                     plot = output_table_show(df)
@@ -346,7 +369,10 @@ def electricity_energy(request):
                         ts_from=ts_from,
                         ts_to=ts_to,
                         measurement=config.e[t].influxdb_meas,
-                        aggregate_window=form.cleaned_data['aggregate_window'])
+                        field="ep_imp",
+                        aggwindow=form.cleaned_data['aggregate_window'],
+                        aggfunc='sum',
+                    )
                     df[t] = df[t].drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop',
                                                 'aggfunc', 'aggwindow', 'datatype'])
                     df[t] = df[t].rename(columns={'_value': t})
@@ -376,11 +402,20 @@ def electricity_energy(request):
                 filename = get_filename(config.eg[tag].label, ts_from, ts_to)
 
                 if 'plot_show' in request.POST:
-                    plot = output_plot_show(df_total, config.eg[tag].label,
-                                            get_plotly_template(request.session['theme']))
+                    plot = output_plot_show(
+                        df=df_total,
+                        layout_title=config.eg[tag].label,
+                        layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
+                        plotly_template=get_plotly_template(request.session['theme'])
+                    )
 
                 elif 'plot_png' in request.POST:
-                    return output_plot_png(df_total, config.eg[tag].label, filename + ".png")
+                    return output_plot_png(
+                        df=df_total,
+                        layout_title=config.eg[tag].label,
+                        layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
+                        filename=filename + ".png",
+                    )
 
                 elif 'table_show' in request.POST:
                     plot = output_table_show(df_total)
@@ -405,6 +440,130 @@ def electricity_energy(request):
     return render(
         request, 'electricity/energy.html',
         context={
+            'form_header': 'Потребление ЭЭ',
+            'plot': plot,
+            'form': form,
+        })
+
+
+def electricity_power(request):
+    global_view(request)
+
+    plot = ''
+
+    if request.method == 'POST':
+        form = DatetimePicker(request.POST, choices=Config().electricity_label_choices())
+
+        if form.is_valid():
+            config = Config()
+
+            # конструируем время от и до
+            tzinfo = pytz.timezone(settings.TIME_ZONE)
+            ts_from = datetime.datetime.combine(form.cleaned_data['from_date'],
+                                                form.cleaned_data['from_time'])
+            ts_to = datetime.datetime.combine(form.cleaned_data['to_date'],
+                                              form.cleaned_data['to_time'])
+            ts_from = tzinfo.localize(ts_from)
+            ts_to = tzinfo.localize(ts_to)
+
+            if ts_from >= ts_to:
+                return render(
+                    request, 'electricity/energy.html',
+                    context={
+                        'plot': f"""
+                            <div class='alert alert-danger' role='alert'>
+                                Конечная дата должна быть больше начальной!
+                            </div>""",
+                        'form_header': 'Пиковая мощность',
+                        'form': form,
+                    })
+
+            tag = form.cleaned_data['tag']
+
+            logger.debug(f"try to load tag: {tag}, from: {ts_from}, to: {ts_to},"
+                         f"aggwindow: {form.cleaned_data['aggregate_window']}")
+
+            if tag in config.e:
+                df = query_data(
+                    config=config,
+                    ts_from=ts_from,
+                    ts_to=ts_to,
+                    measurement=config.e[tag].influxdb_meas,
+                    field='p',
+                    aggwindow=form.cleaned_data['aggregate_window'],
+                    aggfunc='max',
+                )
+
+                if len(df) == 0:
+                    return render(
+                        request, 'electricity/energy.html',
+                        context={
+                            'plot': f"""
+                                <div class='alert alert-danger' role='alert'>
+                                    По указанным параметрам данных нет!
+                                </div>""",
+                            'form_header': 'Пиковая мощность',
+                            'form': form,
+                        })
+
+                df['_value'] = pd.to_numeric(df['_value'])
+
+                # переименовываем стобцы
+                df = df.rename(columns={'_value': config.e[tag].label})
+
+                df = df.set_index('_time')
+                df = df.sort_index(axis=0)
+                df.index = df.index.tz_convert(settings.TIME_ZONE)
+                df.index = df.index.rename('Время')
+
+                df = df.drop(columns=['result', 'table', '_field', '_measurement', '_start', '_stop',
+                                      'aggfunc', 'aggwindow', 'datatype'])
+
+                # имя файла для экспорта
+                filename = get_filename(config.e[tag].label, ts_from, ts_to)
+
+                if 'plot_show' in request.POST:
+                    plot = output_plot_show(
+                        df=df,
+                        layout_title=config.e[tag].label,
+                        layout_yaxis_title="Пиковая мощность, кВт",
+                        plotly_template=get_plotly_template(request.session['theme'])
+                    )
+
+                elif 'plot_png' in request.POST:
+                    return output_plot_png(
+                        df=df,
+                        layout_title=config.e[tag].label,
+                        layout_yaxis_title="Пиковая мощность, кВт",
+                        filename=filename + ".png"
+                    )
+
+                elif 'table_show' in request.POST:
+                    plot = output_table_show(df)
+
+                elif 'table_excel' in request.POST:
+                    return output_table_excel(df, filename, ts_from, ts_to)
+
+    else:
+        ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
+        ts_to = ts_to.replace(second=0)
+
+        ts_from = ts_to + datetime.timedelta(days=-1)
+
+        form = DatetimePicker(
+            initial={
+                'from_time': ts_from,
+                'from_date': ts_from.strftime('%Y-%m-%d'),
+                'to_time': ts_to,
+                'to_date': ts_to.strftime('%Y-%m-%d'),
+            },
+            choices=Config().electricity_label_choices()
+        )
+
+    return render(
+        request, 'electricity/energy.html',
+        context={
+            'form_header': 'Пиковая мощность',
             'plot': plot,
             'form': form,
         })

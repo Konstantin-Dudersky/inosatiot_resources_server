@@ -7,7 +7,7 @@
                 {% csrf_token [ csrf_token] %}
 
                 <fieldset>
-                    <legend>Промежуток времени</legend>
+                    <legend>{{ form_header }}</legend>
 
                     <div class="row mb-3">
                         <label for="{{ form.from_time.id_for_label }}"
