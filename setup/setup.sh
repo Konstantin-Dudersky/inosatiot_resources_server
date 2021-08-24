@@ -34,13 +34,13 @@ python3.9 manage.py migrate
 
 echo
 echo "-----> Create systemd service:"
-python3.9 setup/create_systemd_service.py
+python3.9 setup/lib/create_systemd_service.py
 sudo mv setup/inosatiot_resources_server.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl enable inosatiot_resources_server.service
 
 echo
-echo "-----> Start:"
+echo "-----> Start service:"
 sudo systemctl start inosatiot_resources_server.service
 
 echo
