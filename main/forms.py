@@ -32,6 +32,12 @@ class DatetimePicker(forms.Form):
         required=True
     )
 
+    field = forms.ChoiceField(
+        label='Значение',
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
+        required=True
+    )
+
     aggregate_window = forms.ChoiceField(
         label='Интервал',
         choices=[('3T', '3 минуты'), ('30T', '30 минут'), ('1D', '1 день'), ('1M', '1 месяц'), ('1Y', '1 год')],
@@ -42,9 +48,13 @@ class DatetimePicker(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
-        self.choices = kwargs['choices']
-        del kwargs['choices']
+        self.choices_tag = kwargs['choices_tag']
+        del kwargs['choices_tag']
+
+        self.choices_field = kwargs['choices_field']
+        del kwargs['choices_field']
 
         super().__init__(*args, **kwargs)
 
-        self.fields['tag'].choices = self.choices
+        self.fields['tag'].choices = self.choices_tag
+        self.fields['field'].choices = self.choices_field

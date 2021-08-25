@@ -62,7 +62,7 @@ def query_data(config: Config,
     return client.query_api().query_data_frame(query)
 
 
-def df_columns_to_scatter_data(df: pd.DataFrame):
+def df_columns_to_scatter_data(df: pd.DataFrame, data_line_shape: str = 'linear'):
     data = []
 
     # если графиков несколько, запоминаем имя последнего столбца
@@ -76,8 +76,8 @@ def df_columns_to_scatter_data(df: pd.DataFrame):
             go.Scatter(
                 x=df.index,
                 y=df[col],
-                line=dict(
-                    shape='vh'
+                line=go.scatter.Line(
+                    shape=data_line_shape,
                 ),
                 name=col,
                 stackgroup=stackgroup,
@@ -109,11 +109,12 @@ def get_filename(label, ts_from, ts_to):
 
 
 def output_plot_show(df: pd.DataFrame,
+                     data_line_shape: str,
                      layout_title: str,
                      layout_yaxis_title: str,
                      plotly_template: str):
     plot = go.Figure(
-        data=df_columns_to_scatter_data(df),
+        data=df_columns_to_scatter_data(df, data_line_shape=data_line_shape),
         layout=go.Layout(
             legend=dict(
                 yanchor="top",
@@ -139,12 +140,13 @@ def output_plot_show(df: pd.DataFrame,
 
 def output_plot_png(
         df: pd.DataFrame,
+        data_line_shape: str,
         layout_title: str,
         layout_yaxis_title: str,
         filename: str,
 ):
     plot = go.Figure(
-        data=df_columns_to_scatter_data(df),
+        data=df_columns_to_scatter_data(df, data_line_shape=data_line_shape),
         layout=go.Layout(
             legend=dict(
                 yanchor="top",
@@ -256,7 +258,16 @@ def electricity_energy(request):
     plot = ''
 
     if request.method == 'POST':
-        form = DatetimePicker(request.POST, choices=Config().electricity_label_choices())
+        form = DatetimePicker(
+            request.POST,
+            choices_tag=Config().electricity_label_choices(),
+            choices_field=[
+                ['ep_imp', 'Активная энергия (+)'],
+                ['eq_imp', 'Реактивная энергия (+)'],
+                ['ep_exp', 'Активная энергия (-)'],
+                ['eq_exp', 'Реактивная энергия (-)'],
+            ],
+        )
 
         if form.is_valid():
             config = Config()
@@ -293,7 +304,7 @@ def electricity_energy(request):
                     ts_from=ts_from,
                     ts_to=ts_to,
                     measurement=config.e[tag].influxdb_meas,
-                    field="ep_imp",
+                    field=form.cleaned_data['field'],
                     aggwindow=form.cleaned_data['aggregate_window'],
                     aggfunc='sum',
                 )
@@ -329,6 +340,7 @@ def electricity_energy(request):
                 if 'plot_show' in request.POST:
                     plot = output_plot_show(
                         df=df,
+                        data_line_shape='vh',
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
                         plotly_template=get_plotly_template(request.session['theme'])
@@ -337,6 +349,7 @@ def electricity_energy(request):
                 elif 'plot_png' in request.POST:
                     return output_plot_png(
                         df=df,
+                        data_line_shape='vh',
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
                         filename=filename + ".png",
@@ -404,6 +417,7 @@ def electricity_energy(request):
                 if 'plot_show' in request.POST:
                     plot = output_plot_show(
                         df=df_total,
+                        data_line_shape='vh',
                         layout_title=config.eg[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
                         plotly_template=get_plotly_template(request.session['theme'])
@@ -412,6 +426,7 @@ def electricity_energy(request):
                 elif 'plot_png' in request.POST:
                     return output_plot_png(
                         df=df_total,
+                        data_line_shape='vh',
                         layout_title=config.eg[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
                         filename=filename + ".png",
@@ -429,12 +444,20 @@ def electricity_energy(request):
 
         ts_from = ts_to + datetime.timedelta(days=-1)
 
-        form = DatetimePicker(initial={
-            'from_time': ts_from,
-            'from_date': ts_from.strftime('%Y-%m-%d'),
-            'to_time': ts_to,
-            'to_date': ts_to.strftime('%Y-%m-%d'),
-        }, choices=Config().electricity_label_choices()
+        form = DatetimePicker(
+            initial={
+                'from_time': ts_from,
+                'from_date': ts_from.strftime('%Y-%m-%d'),
+                'to_time': ts_to,
+                'to_date': ts_to.strftime('%Y-%m-%d'),
+            },
+            choices_tag=Config().electricity_label_choices(),
+            choices_field=[
+                ['ep_imp', 'Активная энергия (+)'],
+                ['eq_imp', 'Реактивная энергия (+)'],
+                ['ep_exp', 'Активная энергия (-)'],
+                ['eq_exp', 'Реактивная энергия (-)'],
+            ],
         )
 
     return render(
@@ -452,7 +475,16 @@ def electricity_power(request):
     plot = ''
 
     if request.method == 'POST':
-        form = DatetimePicker(request.POST, choices=Config().electricity_label_choices())
+        form = DatetimePicker(
+            request.POST,
+            choices_tag=Config().electricity_label_choices(),
+            choices_field=[
+                ['ep_imp', 'Активная мощность (+)'],
+                ['eq_imp', 'Реактивная мощность (+)'],
+                ['ep_exp', 'Активная мощность (-)'],
+                ['eq_exp', 'Реактивная мощность (-)'],
+            ],
+        )
 
         if form.is_valid():
             config = Config()
@@ -525,6 +557,7 @@ def electricity_power(request):
                 if 'plot_show' in request.POST:
                     plot = output_plot_show(
                         df=df,
+                        data_line_shape='linear',
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Пиковая мощность, кВт",
                         plotly_template=get_plotly_template(request.session['theme'])
@@ -533,6 +566,7 @@ def electricity_power(request):
                 elif 'plot_png' in request.POST:
                     return output_plot_png(
                         df=df,
+                        data_line_shape='linear',
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Пиковая мощность, кВт",
                         filename=filename + ".png"
@@ -557,7 +591,13 @@ def electricity_power(request):
                 'to_time': ts_to,
                 'to_date': ts_to.strftime('%Y-%m-%d'),
             },
-            choices=Config().electricity_label_choices()
+            choices_tag=Config().electricity_label_choices(),
+            choices_field=[
+                ['ep_imp', 'Активная мощность (+)'],
+                ['eq_imp', 'Реактивная мощность (+)'],
+                ['ep_exp', 'Активная мощность (-)'],
+                ['eq_exp', 'Реактивная мощность (-)'],
+            ],
         )
 
     return render(

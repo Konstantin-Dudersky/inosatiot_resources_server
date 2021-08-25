@@ -39,6 +39,13 @@
                     </div>
 
                     <div class="row mb-3">
+                        <label for="{{ form.field.id_for_label }}"
+                               class="col-2 col-form-label col-form-label-sm">{{ form.field.label }}
+                        </label>
+                        <div class="col-10">{{ form.field }}</div>
+                    </div>
+
+                    <div class="row mb-3">
                         <label for="{{ form.aggregate_window.id_for_label }}"
                                class="col-2 col-form-label col-form-label-sm">{{ form.aggregate_window.label }}
                         </label>
@@ -55,7 +62,7 @@
                         <div class="col-10">
                             <div class="btn-group d-flex" role="group" aria-label="Output">
                                 <button type="submit" class="btn btn-primary" name="plot_show">
-                                    <i class="fas fa-up-right-from-square"></i> Показать
+                                    <i class="fas fa-external-link-alt"></i> Показать
                                 </button>
                                 <button type="submit" class="btn btn-primary" name="plot_png"
                                         data-bs-toggle="tooltip" data-bs-placement="top"
@@ -73,7 +80,7 @@
                         <div class="col-10">
                             <div class="btn-group d-flex" role="group" aria-label="Output">
                                 <button type="submit" class="btn btn-primary" name="table_show">
-                                    <i class="fas fa-up-right-from-square"></i> Показать
+                                    <i class="fas fa-external-link-alt"></i> Показать
                                 </button>
                                 <button type="submit" class="btn btn-primary" name="table_excel"
                                         data-bs-toggle="tooltip" data-bs-placement="top"
