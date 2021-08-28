@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import index, electricity_config, electricity_energy, electricity_power
+from .views import index, electricity_config, electricity_energy, electricity_power, electricity_quality
 
 app_name = 'main'
 urlpatterns = [
@@ -8,5 +8,6 @@ urlpatterns = [
     path('electricity/', electricity_energy),
     path('electricity/energy/', electricity_energy),
     path('electricity/power/', electricity_power),
+    path('electricity/quality/', electricity_quality),
     path('electricity/config/', electricity_config),
 ]

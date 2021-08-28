@@ -13,9 +13,11 @@ from django.shortcuts import render
 from influxdb_client import InfluxDBClient
 from loguru import logger
 from plotly.graph_objects import layout
+import plotly.io as pio
 
 from .config import Config
 from .forms import DatetimePicker
+
 
 logger.remove()
 logger.add(sys.stderr, level='DEBUG')
@@ -42,13 +44,33 @@ def query_data(config: Config,
                aggwindow: str,
                aggfunc: str,
                ) -> pd.DataFrame:
+    # fields
+    fields = [f.strip() for f in field.split(',')]
+
+    field_str = f'|> filter(fn: (r) => r["_field"] == "{fields[0]}"'
+    for i in range(1, len(fields)):
+        field_str += f' or r["_field"] == "{fields[i]}"'
+    field_str += ")"
+    logger.trace(field_str)
+
+    # aggfuncs
+    aggfuncs = [f.strip() for f in aggfunc.split(',')]
+
+    aggfunc_str = f'|> filter(fn: (r) => r["aggfunc"] == "{aggfuncs[0]}"'
+    for i in range(1, len(aggfuncs)):
+        aggfunc_str += f' or r["aggfunc"] == "{aggfuncs[i]}"'
+    aggfunc_str += ")"
+    logger.debug(aggfunc_str)
+
+    # |> filter(fn: (r) => r["_field"] == "{field}")
+    # |> filter(fn: (r) => r["aggfunc"] == "{aggfunc}")
     query = f"""
         from(bucket: "{config.influxdb()['bucket']}")
           |> range(start: {ts_from.isoformat()}, stop: {ts_to.isoformat()})
           |> filter(fn: (r) => r["_measurement"] == "{measurement}")
-          |> filter(fn: (r) => r["_field"] == "{field}")
+          {field_str}
           |> filter(fn: (r) => r["aggwindow"] == "{aggwindow}")
-          |> filter(fn: (r) => r["aggfunc"] == "{aggfunc}")
+          {aggfunc_str}
           |> yield()"""
 
     logger.trace(f"flux query: {query}")
@@ -382,7 +404,7 @@ def electricity_energy(request):
                         ts_from=ts_from,
                         ts_to=ts_to,
                         measurement=config.e[t].influxdb_meas,
-                        field="ep_imp",
+                        field=form.cleaned_data['field'],
                         aggwindow=form.cleaned_data['aggregate_window'],
                         aggfunc='sum',
                     )
@@ -479,10 +501,8 @@ def electricity_power(request):
             request.POST,
             choices_tag=Config().electricity_label_choices(),
             choices_field=[
-                ['ep_imp', 'Активная мощность (+)'],
-                ['eq_imp', 'Реактивная мощность (+)'],
-                ['ep_exp', 'Активная мощность (-)'],
-                ['eq_exp', 'Реактивная мощность (-)'],
+                ['p', 'Активная мощность'],
+                ['q', 'Реактивная мощность'],
             ],
         )
 
@@ -521,7 +541,7 @@ def electricity_power(request):
                     ts_from=ts_from,
                     ts_to=ts_to,
                     measurement=config.e[tag].influxdb_meas,
-                    field='p',
+                    field=form.cleaned_data['field'],
                     aggwindow=form.cleaned_data['aggregate_window'],
                     aggfunc='max',
                 )
@@ -593,10 +613,8 @@ def electricity_power(request):
             },
             choices_tag=Config().electricity_label_choices(),
             choices_field=[
-                ['ep_imp', 'Активная мощность (+)'],
-                ['eq_imp', 'Реактивная мощность (+)'],
-                ['ep_exp', 'Активная мощность (-)'],
-                ['eq_exp', 'Реактивная мощность (-)'],
+                ['p', 'Активная мощность'],
+                ['q', 'Реактивная мощность'],
             ],
         )
 
@@ -607,3 +625,252 @@ def electricity_power(request):
             'plot': plot,
             'form': form,
         })
+
+
+def electricity_quality(request):
+    global_view(request)
+
+    choices_tag = Config().electricity_label_choices()
+
+    choices_field = [
+        ['v12,v23,v31', 'Напряжение линейное'],
+        ['v12', 'Напряжение линейное V12'],
+        ['v23', 'Напряжение линейное V23'],
+        ['v31', 'Напряжение линейное V31'],
+        ['i1,i2,i3', 'Ток фазный'],
+        ['i1', 'Ток фазный I1'],
+        ['i2', 'Ток фазный I2'],
+        ['i3', 'Ток фазный I3'],
+        ['p1,p2,p3,p', 'Активная мощность'],
+        ['q1,q2,q3,q', 'Реактивная мощность'],
+        ['pf1,pf2,pf3', 'Коэффициент мощности (cos fi)'],
+        ['f', 'Частота'],
+    ]
+
+    plot = ''
+
+    if request.method == 'POST':
+        form = DatetimePicker(
+            request.POST,
+            choices_tag=choices_tag,
+            choices_field=choices_field,
+        )
+
+        if form.is_valid():
+            config = Config()
+
+            # конструируем время от и до
+            tzinfo = pytz.timezone(settings.TIME_ZONE)
+            ts_from = datetime.datetime.combine(form.cleaned_data['from_date'],
+                                                form.cleaned_data['from_time'])
+            ts_to = datetime.datetime.combine(form.cleaned_data['to_date'],
+                                              form.cleaned_data['to_time'])
+            ts_from = tzinfo.localize(ts_from)
+            ts_to = tzinfo.localize(ts_to)
+
+            if ts_from >= ts_to:
+                return render(
+                    request, 'electricity/energy.html',
+                    context={
+                        'plot': f"""
+                            <div class='alert alert-danger' role='alert'>
+                                Конечная дата должна быть больше начальной!
+                            </div>""",
+                        'form_header': 'Показатели качества ЭЭ',
+                        'form': form,
+                    })
+
+            measurement = form.cleaned_data['tag']
+            fields = form.cleaned_data['field']
+
+            # measurement label
+            meas_label = ""
+            for cf in choices_tag:
+                if cf[0] == measurement:
+                    meas_label = cf[1]
+                    break
+
+            # fields label
+            fields_label = ""
+            for cf in choices_field:
+                if cf[0] == fields:
+                    fields_label = cf[1]
+                    break
+
+            logger.debug(f"try to load tag: {measurement}, from: {ts_from}, to: {ts_to}, "
+                         f"fields: {fields}, "
+                         f"aggwindow: {form.cleaned_data['aggregate_window']}")
+
+            if measurement in config.e:
+                several_fields = len(fields.split(',')) > 1
+
+                if several_fields:
+                    df = query_data(
+                        config=config,
+                        ts_from=ts_from,
+                        ts_to=ts_to,
+                        measurement=config.e[measurement].influxdb_meas,
+                        field=fields,
+                        aggwindow=form.cleaned_data['aggregate_window'],
+                        aggfunc='mean',
+                    )
+
+                else:
+                    df = query_data(
+                        config=config,
+                        ts_from=ts_from,
+                        ts_to=ts_to,
+                        measurement=config.e[measurement].influxdb_meas,
+                        field=fields,
+                        aggwindow=form.cleaned_data['aggregate_window'],
+                        aggfunc='mean,max,min',
+                    )
+
+                if len(df) == 0:
+                    return alert_nodata(form, request, "Показатели качества ЭЭ")
+
+                if several_fields:
+                    df['_value'] = pd.to_numeric(df['_value'])
+                    df = df.pivot_table(index="_time", columns='_field', values='_value')
+                else:
+                    df['_value'] = pd.to_numeric(df['_value'])
+                    df = df.pivot_table(index="_time", columns='aggfunc', values='_value')
+
+                df = df.sort_index(axis=0)
+                df.index = df.index.tz_convert(settings.TIME_ZONE)
+                df.index = df.index.rename('Время')
+
+                # имя файла для экспорта
+                filename = get_filename(config.e[measurement].label, ts_from, ts_to)
+
+                if 'plot_show' in request.POST:
+                    if several_fields:
+                        data = []
+
+                        for col in df.columns:
+                            data.append(
+                                go.Scatter(
+                                    x=df.index,
+                                    y=df[col],
+                                    name=col,
+                                )
+                            )
+
+                        plot = go.Figure(
+                            data=data,
+                            layout=go.Layout(
+                                template=get_plotly_template(request.session['theme']),
+                                title=f"{meas_label}. {fields_label}",
+                            )
+                        ).to_html(
+                            full_html=False,
+                            config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
+                        )
+
+                        plot = '<div class="h-100 pb-4">' + plot[5:]
+
+                    else:
+                        color_error_range = plotly_hex_to_rgba(
+                            pio.templates[pio.templates.default].layout['colorway'][0], 0.2)
+
+                        plot = go.Figure(
+                            data=[
+                                go.Scatter(
+                                    name='',
+                                    x=df.index,
+                                    y=df['mean'],
+                                ),
+                                go.Scatter(
+                                    line=go.scatter.Line(
+                                        color=color_error_range,
+                                        width=0,
+                                    ),
+                                    name='min',
+                                    x=df.index,
+                                    y=df['min'],
+                                ),
+                                go.Scatter(
+                                    fill='tonexty',
+                                    fillcolor=color_error_range,
+                                    line=go.scatter.Line(
+                                        color=color_error_range,
+                                        width=0,
+                                    ),
+                                    name='max',
+                                    x=df.index,
+                                    y=df['max'],
+                                ),
+                            ],
+                            layout=go.Layout(
+                                template=get_plotly_template(request.session['theme']),
+                                title=f"{meas_label}. {fields_label}",
+                                showlegend=False,
+                            )
+                        )
+
+                        plot = plot.to_html(
+                            full_html=False,
+                            config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
+                        )
+
+                        plot = '<div class="h-100 pb-4">' + plot[5:]
+
+                elif 'plot_png' in request.POST:
+                    return output_plot_png(
+                        df=df,
+                        data_line_shape='linear',
+                        layout_title=config.e[measurement].label,
+                        layout_yaxis_title="Пиковая мощность, кВт",
+                        filename=filename + ".png"
+                    )
+
+                elif 'table_show' in request.POST:
+                    plot = output_table_show(df)
+
+                elif 'table_excel' in request.POST:
+                    return output_table_excel(df, filename, ts_from, ts_to)
+    else:
+        ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
+        ts_to = ts_to.replace(second=0)
+
+        ts_from = ts_to + datetime.timedelta(days=-1)
+
+        form = DatetimePicker(
+            initial={
+                'from_time': ts_from,
+                'from_date': ts_from.strftime('%Y-%m-%d'),
+                'to_time': ts_to,
+                'to_date': ts_to.strftime('%Y-%m-%d'),
+            },
+            choices_tag=Config().electricity_label_choices(),
+            choices_field=choices_field
+        )
+
+    return render(
+        request, 'electricity/energy.html',
+        context={
+            'form_header': 'Показатели качества ЭЭ',
+            'plot': plot,
+            'form': form,
+        })
+
+
+def alert_nodata(form, request, form_header):
+    return render(
+        request, 'electricity/energy.html',
+        context={
+            'plot': f"""
+                <div class='alert alert-danger' role='alert'>
+                    По указанным параметрам данных нет!
+                </div>""",
+            'form_header': form_header,
+            'form': form,
+        })
+
+
+def plotly_hex_to_rgba(color_hex: str, alpha: float) -> str:
+    color_rgb = 'rgba('
+    for i in (0, 2, 4):
+        color_rgb += str(int(color_hex.lstrip('#')[i:i + 2], 16)) + ', '
+    color_rgb += f'{alpha})'
+    return color_rgb
