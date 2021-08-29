@@ -1,0 +1,46 @@
+{% extends "layout/basic.html" %}
+
+{% block content %}
+
+    <div class="row pt-2">
+
+        <div class="col-12">
+            <p class="lead">Ссылки</p>
+
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th scope="col">Компонент</th>
+                    <th scope="col">Описание</th>
+                    <th scope="col">Ссылка</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <tr>
+                    <th scope="row">InfluxDB</th>
+                    <td>База данных</td>
+                    <td><a href="https://www.influxdata.com/" target="_blank">https://www.influxdata.com/</a></td>
+                </tr>
+
+                <tr>
+                    <th scope="row">Django</th>
+                    <td>Веб-фреймворк</td>
+                    <td><a href="https://www.djangoproject.com/" target="_blank">https://www.djangoproject.com/</a></td>
+                </tr>
+
+                <tr>
+                    <th scope="row">Plotly</th>
+                    <td>Построение графиков</td>
+                    <td><a href="https://plotly.com/" target="_blank">https://plotly.com/</a></td>
+                </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+{% endblock %}

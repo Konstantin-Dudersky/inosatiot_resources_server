@@ -6,6 +6,7 @@ from io import BytesIO
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import pytz
 from django.conf import settings
 from django.http import FileResponse
@@ -13,11 +14,9 @@ from django.shortcuts import render
 from influxdb_client import InfluxDBClient
 from loguru import logger
 from plotly.graph_objects import layout
-import plotly.io as pio
 
 from .config import Config
 from .forms import DatetimePicker
-
 
 logger.remove()
 logger.add(sys.stderr, level='DEBUG')
@@ -261,6 +260,12 @@ def index(request):
     global_view(request)
 
     return render(request, 'index.html')
+
+
+def info(request):
+    global_view(request)
+
+    return render(request, 'info.html')
 
 
 def electricity_config(request):
@@ -764,7 +769,7 @@ def electricity_quality(request):
                             )
                         ).to_html(
                             full_html=False,
-                            config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
+                            config={'displayModeBar': True, 'displaylogo': False, 'showTips': False, }
                         )
 
                         plot = '<div class="h-100 pb-4">' + plot[5:]
