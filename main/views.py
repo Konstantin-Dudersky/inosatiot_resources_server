@@ -748,7 +748,15 @@ def electricity_quality(request):
                 # имя файла для экспорта
                 filename = get_filename(config.e[measurement].label, ts_from, ts_to)
 
-                if 'plot_show' in request.POST:
+                plot_show = 'plot_show' in request.POST
+                plot_png = 'plot_png' in request.POST
+
+                if plot_show or plot_png:
+                    if plot_show:
+                        layout_template = get_plotly_template(request.session['theme'])
+                    else:
+                        layout_template = get_plotly_template('white')
+
                     if several_fields:
                         data = []
 
@@ -764,16 +772,10 @@ def electricity_quality(request):
                         plot = go.Figure(
                             data=data,
                             layout=go.Layout(
-                                template=get_plotly_template(request.session['theme']),
+                                template=layout_template,
                                 title=f"{meas_label}. {fields_label}",
                             )
-                        ).to_html(
-                            full_html=False,
-                            config={'displayModeBar': True, 'displaylogo': False, 'showTips': False, }
                         )
-
-                        plot = '<div class="h-100 pb-4">' + plot[5:]
-
                     else:
                         color_error_range = plotly_hex_to_rgba(
                             pio.templates[pio.templates.default].layout['colorway'][0], 0.2)
@@ -807,18 +809,25 @@ def electricity_quality(request):
                                 ),
                             ],
                             layout=go.Layout(
-                                template=get_plotly_template(request.session['theme']),
+                                template=layout_template,
                                 title=f"{meas_label}. {fields_label}",
                                 showlegend=False,
                             )
                         )
 
+                    if plot_show:
                         plot = plot.to_html(
                             full_html=False,
                             config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
                         )
 
                         plot = '<div class="h-100 pb-4">' + plot[5:]
+                    elif plot_png:
+                        return FileResponse(
+                            BytesIO(plot.to_image(format='png', width=1200, height=800)),
+                            as_attachment=True,
+                            content_type="image/png",
+                            filename=filename)
 
                 elif 'plot_png' in request.POST:
                     return output_plot_png(
