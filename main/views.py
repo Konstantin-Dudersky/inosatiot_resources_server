@@ -59,7 +59,7 @@ def query_data(config: Config,
     for i in range(1, len(aggfuncs)):
         aggfunc_str += f' or r["aggfunc"] == "{aggfuncs[i]}"'
     aggfunc_str += ")"
-    logger.debug(aggfunc_str)
+    logger.trace(aggfunc_str)
 
     # |> filter(fn: (r) => r["_field"] == "{field}")
     # |> filter(fn: (r) => r["aggfunc"] == "{aggfunc}")
@@ -214,8 +214,11 @@ def output_table_show(df):
     return plot
 
 
-def output_table_excel(df, filename, ts_from, ts_to):
+def output_table_excel(df: pd.DataFrame, filename: str, header: str):
     df.index = df.index.tz_localize(None)
+
+    ts_from = df.index.min().to_pydatetime()
+    ts_to = df.index.max().to_pydatetime()
 
     stat_min = df.min(numeric_only=True)
     stat_mean = df.mean(numeric_only=True)
@@ -238,7 +241,7 @@ def output_table_excel(df, filename, ts_from, ts_to):
     )
     worksheet = writer.sheets['Sheet1']
 
-    worksheet.write(0, 0, 'Потребление электроэнергии')
+    worksheet.write(0, 0, header)
     worksheet.write(1, 0, 'от')
     worksheet.write(1, 1, ts_from.isoformat(sep=' ', timespec='minutes'))
     worksheet.write(2, 0, 'до')
@@ -386,7 +389,7 @@ def electricity_energy(request):
                     plot = output_table_show(df)
 
                 elif 'table_excel' in request.POST:
-                    return output_table_excel(df, filename, ts_from, ts_to)
+                    return output_table_excel(df, filename, "Потребленная ЭЭ")
 
             elif tag in config.eg:
                 # определяем, какие теги используются в формуле
@@ -463,7 +466,7 @@ def electricity_energy(request):
                     plot = output_table_show(df_total)
 
                 elif 'table_excel' in request.POST:
-                    return output_table_excel(df_total, filename, ts_from, ts_to)
+                    return output_table_excel(df_total, filename, "Потребленная ЭЭ")
 
     else:
         ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
@@ -601,7 +604,7 @@ def electricity_power(request):
                     plot = output_table_show(df)
 
                 elif 'table_excel' in request.POST:
-                    return output_table_excel(df, filename, ts_from, ts_to)
+                    return output_table_excel(df, filename, "Пиковая мощность")
 
     else:
         ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
@@ -709,6 +712,29 @@ def electricity_quality(request):
             if measurement in config.e:
                 several_fields = len(fields.split(',')) > 1
 
+                # подпись для вертикальной оси
+                field_0 = fields.split(',')[0]
+                if field_0 in ['ep_imp', 'ep_exp']:
+                    plot_layout_yaxis_title = "Электроэнергия, [Вт·ч]"
+                elif field_0 in ['eq_imp', 'eq_exp']:
+                    plot_layout_yaxis_title = "Электроэнергия, [ВАр·ч]"
+                elif field_0 in ['f', ]:
+                    plot_layout_yaxis_title = "Частота, [Гц]"
+                elif field_0 in ['i1', 'i2', 'i3']:
+                    plot_layout_yaxis_title = "Ток, [А]"
+                elif field_0 in ['p1', 'p2', 'p3', 'p']:
+                    plot_layout_yaxis_title = "Мощность, [Вт]"
+                elif field_0 in ['pf1', 'pf2', 'pf3']:
+                    plot_layout_yaxis_title = "Коэффициент мощности"
+                elif field_0 in ['q1', 'q2', 'q3', 'q']:
+                    plot_layout_yaxis_title = "Мощность, [ВАр]"
+                elif field_0 in ['s1', 's2', 's3', 's']:
+                    plot_layout_yaxis_title = "Мощность, [ВА]"
+                elif field_0 in ['v12', 'v23', 'v31']:
+                    plot_layout_yaxis_title = "Напряжение, [В]"
+                else:
+                    plot_layout_yaxis_title = "---"
+
                 if several_fields:
                     df = query_data(
                         config=config,
@@ -774,6 +800,9 @@ def electricity_quality(request):
                             layout=go.Layout(
                                 template=layout_template,
                                 title=f"{meas_label}. {fields_label}",
+                                yaxis=go.layout.YAxis(
+                                    title=plot_layout_yaxis_title,
+                                )
                             )
                         )
                     else:
@@ -812,6 +841,9 @@ def electricity_quality(request):
                                 template=layout_template,
                                 title=f"{meas_label}. {fields_label}",
                                 showlegend=False,
+                                yaxis=go.layout.YAxis(
+                                    title=plot_layout_yaxis_title,
+                                )
                             )
                         )
 
@@ -829,20 +861,11 @@ def electricity_quality(request):
                             content_type="image/png",
                             filename=filename)
 
-                elif 'plot_png' in request.POST:
-                    return output_plot_png(
-                        df=df,
-                        data_line_shape='linear',
-                        layout_title=config.e[measurement].label,
-                        layout_yaxis_title="Пиковая мощность, кВт",
-                        filename=filename + ".png"
-                    )
-
                 elif 'table_show' in request.POST:
                     plot = output_table_show(df)
 
                 elif 'table_excel' in request.POST:
-                    return output_table_excel(df, filename, ts_from, ts_to)
+                    return output_table_excel(df, filename, f"{meas_label}. {fields_label}")
     else:
         ts_to = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
         ts_to = ts_to.replace(second=0)
