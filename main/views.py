@@ -13,7 +13,6 @@ from django.http import FileResponse
 from django.shortcuts import render
 from influxdb_client import InfluxDBClient
 from loguru import logger
-from plotly.graph_objects import layout
 
 from .config import Config
 from .forms import DatetimePicker
@@ -129,12 +128,44 @@ def get_filename(label, ts_from, ts_to):
     return filename
 
 
-def output_plot_show(df: pd.DataFrame,
-                     data_line_shape: str,
-                     layout_title: str,
-                     layout_yaxis_title: str,
-                     plotly_template: str):
-    plot = go.Figure(
+# def output_plot_show(df: pd.DataFrame,
+#                      data_line_shape: str,
+#                      layout_title: str,
+#                      layout_yaxis_title: str,
+#                      plotly_template: str):
+#     plot = go.Figure(
+#         data=df_columns_to_scatter_data(df, data_line_shape=data_line_shape),
+#         layout=go.Layout(
+#             legend=dict(
+#                 yanchor="top",
+#                 y=-0.1,
+#                 xanchor="left",
+#                 x=0
+#             ),
+#             template=plotly_template,
+#             title=layout_title,
+#             yaxis=go.layout.YAxis(
+#                 title=layout_yaxis_title
+#             ),
+#         )
+#     ).to_html(
+#         full_html=False,
+#         config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
+#     )
+#
+#     plot = '<div class="h-100 pb-4">' + plot[5:]
+#
+#     return plot
+
+
+def plot_stacked_scatter(
+        df: pd.DataFrame,
+        data_line_shape: str,
+        layout_template: str,
+        layout_title: str,
+        layout_yaxis_title: str,
+) -> go.Figure:
+    return go.Figure(
         data=df_columns_to_scatter_data(df, data_line_shape=data_line_shape),
         layout=go.Layout(
             legend=dict(
@@ -143,53 +174,34 @@ def output_plot_show(df: pd.DataFrame,
                 xanchor="left",
                 x=0
             ),
-            template=plotly_template,
+            template=layout_template,
             title=layout_title,
-            yaxis=layout.YAxis(
+            yaxis=go.layout.YAxis(
                 title=layout_yaxis_title
-            ),
-        )
-    ).to_html(
+            )
+        ),
+    )
+
+
+def output_plot_show(fig: go.Figure):
+    html = fig.to_html(
         full_html=False,
         config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
     )
 
-    plot = '<div class="h-100 pb-4">' + plot[5:]
+    html = '<div class="h-100 pb-4">' + html[5:]
 
-    return plot
+    return html
 
 
-def output_plot_png(
-        df: pd.DataFrame,
-        data_line_shape: str,
-        layout_title: str,
-        layout_yaxis_title: str,
-        filename: str,
-):
-    plot = go.Figure(
-        data=df_columns_to_scatter_data(df, data_line_shape=data_line_shape),
-        layout=go.Layout(
-            legend=dict(
-                yanchor="top",
-                y=-0.1,
-                xanchor="left",
-                x=0
-            ),
-            template='plotly_white',
-            title=layout_title,
-            yaxis=layout.YAxis(
-                title=layout_yaxis_title
-            )
-        ),
-    ).to_image(format='png', width=1200, height=800)
+def output_plot_png(fig: go.Figure, filename: str):
+    image = fig.to_image(format='png', width=1200, height=800)
 
-    response = FileResponse(
-        BytesIO(plot),
+    return FileResponse(
+        BytesIO(image),
         as_attachment=True,
         content_type="image/png",
         filename=filename)
-
-    return response
 
 
 def output_table_show(df):
@@ -312,16 +324,7 @@ def electricity_energy(request):
             ts_to = tzinfo.localize(ts_to)
 
             if ts_from >= ts_to:
-                return render(
-                    request, 'electricity/energy.html',
-                    context={
-                        'plot': f"""
-                            <div class='alert alert-danger' role='alert'>
-                                Конечная дата должна быть больше начальной!
-                            </div>""",
-                        'form_header': 'Потребление ЭЭ',
-                        'form': form,
-                    })
+                return alert_timerange(form, request, "Потребление ЭЭ")
 
             tag = form.cleaned_data['tag']
 
@@ -340,16 +343,7 @@ def electricity_energy(request):
                 )
 
                 if len(df) == 0:
-                    return render(
-                        request, 'electricity/energy.html',
-                        context={
-                            'plot': f"""
-                                <div class='alert alert-danger' role='alert'>
-                                    По указанным параметрам данных нет!
-                                </div>""",
-                            'form_header': 'Потребление ЭЭ',
-                            'form': form,
-                        })
+                    return alert_nodata(form, request, "Потребление ЭЭ")
 
                 df['_value'] = pd.to_numeric(df['_value'])
 
@@ -368,22 +362,25 @@ def electricity_energy(request):
                 filename = get_filename(config.e[tag].label, ts_from, ts_to)
 
                 if 'plot_show' in request.POST:
-                    plot = output_plot_show(
+                    fig = plot_stacked_scatter(
                         df=df,
                         data_line_shape='vh',
+                        layout_template=get_plotly_template(request.session['theme']),
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
-                        plotly_template=get_plotly_template(request.session['theme'])
                     )
 
+                    plot = output_plot_show(fig)
+
                 elif 'plot_png' in request.POST:
-                    return output_plot_png(
+                    fig = plot_stacked_scatter(
                         df=df,
                         data_line_shape='vh',
+                        layout_template='seaborn',
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
-                        filename=filename + ".png",
                     )
+                    return output_plot_png(fig, filename + ".png")
 
                 elif 'table_show' in request.POST:
                     plot = output_table_show(df)
@@ -445,22 +442,26 @@ def electricity_energy(request):
                 filename = get_filename(config.eg[tag].label, ts_from, ts_to)
 
                 if 'plot_show' in request.POST:
-                    plot = output_plot_show(
+                    fig = plot_stacked_scatter(
                         df=df_total,
                         data_line_shape='vh',
+                        layout_template=get_plotly_template(request.session['theme']),
                         layout_title=config.eg[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
-                        plotly_template=get_plotly_template(request.session['theme'])
                     )
 
+                    plot = output_plot_show(fig)
+
                 elif 'plot_png' in request.POST:
-                    return output_plot_png(
+                    fig = plot_stacked_scatter(
                         df=df_total,
                         data_line_shape='vh',
+                        layout_template='seaborn',
                         layout_title=config.eg[tag].label,
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
-                        filename=filename + ".png",
                     )
+
+                    return output_plot_png(fig, filename + ".png")
 
                 elif 'table_show' in request.POST:
                     plot = output_table_show(df_total)
@@ -527,16 +528,7 @@ def electricity_power(request):
             ts_to = tzinfo.localize(ts_to)
 
             if ts_from >= ts_to:
-                return render(
-                    request, 'electricity/energy.html',
-                    context={
-                        'plot': f"""
-                            <div class='alert alert-danger' role='alert'>
-                                Конечная дата должна быть больше начальной!
-                            </div>""",
-                        'form_header': 'Пиковая мощность',
-                        'form': form,
-                    })
+                return alert_timerange(form, request, "Пиковая мощность")
 
             tag = form.cleaned_data['tag']
 
@@ -555,16 +547,7 @@ def electricity_power(request):
                 )
 
                 if len(df) == 0:
-                    return render(
-                        request, 'electricity/energy.html',
-                        context={
-                            'plot': f"""
-                                <div class='alert alert-danger' role='alert'>
-                                    По указанным параметрам данных нет!
-                                </div>""",
-                            'form_header': 'Пиковая мощность',
-                            'form': form,
-                        })
+                    return alert_nodata(form, request, "Пиковая мощность")
 
                 df['_value'] = pd.to_numeric(df['_value'])
 
@@ -582,23 +565,36 @@ def electricity_power(request):
                 # имя файла для экспорта
                 filename = get_filename(config.e[tag].label, ts_from, ts_to)
 
+                plot_show = 'plot_show' in request.POST
+                plot_png = 'plot_png' in request.POST
+
+                if plot_show or plot_png:
+                    if plot_show:
+                        layout_template = get_plotly_template(request.session['theme'])
+                    else:
+                        layout_template = get_plotly_template('white')
+
                 if 'plot_show' in request.POST:
-                    plot = output_plot_show(
+                    fig = plot_stacked_scatter(
                         df=df,
                         data_line_shape='linear',
+                        layout_template=get_plotly_template(request.session['theme']),
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Пиковая мощность, кВт",
-                        plotly_template=get_plotly_template(request.session['theme'])
                     )
 
+                    plot = output_plot_show(fig)
+
                 elif 'plot_png' in request.POST:
-                    return output_plot_png(
+                    fig = plot_stacked_scatter(
                         df=df,
                         data_line_shape='linear',
+                        layout_template='seaborn',
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Пиковая мощность, кВт",
-                        filename=filename + ".png"
                     )
+
+                    return output_plot_png(fig, filename + ".png")
 
                 elif 'table_show' in request.POST:
                     plot = output_table_show(df)
@@ -677,16 +673,7 @@ def electricity_quality(request):
             ts_to = tzinfo.localize(ts_to)
 
             if ts_from >= ts_to:
-                return render(
-                    request, 'electricity/energy.html',
-                    context={
-                        'plot': f"""
-                            <div class='alert alert-danger' role='alert'>
-                                Конечная дата должна быть больше начальной!
-                            </div>""",
-                        'form_header': 'Показатели качества ЭЭ',
-                        'form': form,
-                    })
+                return alert_timerange(form, request, "Показатели качества ЭЭ")
 
             measurement = form.cleaned_data['tag']
             fields = form.cleaned_data['field']
@@ -899,6 +886,19 @@ def alert_nodata(form, request, form_header):
             'plot': f"""
                 <div class='alert alert-danger' role='alert'>
                     По указанным параметрам данных нет!
+                </div>""",
+            'form_header': form_header,
+            'form': form,
+        })
+
+
+def alert_timerange(form, request, form_header):
+    return render(
+        request, 'electricity/energy.html',
+        context={
+            'plot': f"""
+                <div class='alert alert-danger' role='alert'>
+                    Конечная дата должна быть больше начальной!
                 </div>""",
             'form_header': form_header,
             'form': form,
