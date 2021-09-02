@@ -42,6 +42,14 @@ def query_data(config: Config,
                aggwindow: str,
                aggfunc: str,
                ) -> pd.DataFrame:
+    # measurements
+    measurements = [f.strip() for f in measurement.split(',')]
+
+    measurements_str = f'|> filter(fn: (r) => r["_measurement"] == "{measurements[0]}"'
+    for i in range(1, len(measurements)):
+        measurements_str += f' or r["_measurement"] == "{measurements[i]}"'
+    measurements_str += ")"
+
     # fields
     fields = [f.strip() for f in field.split(',')]
 
@@ -49,7 +57,6 @@ def query_data(config: Config,
     for i in range(1, len(fields)):
         field_str += f' or r["_field"] == "{fields[i]}"'
     field_str += ")"
-    logger.trace(field_str)
 
     # aggfuncs
     aggfuncs = [f.strip() for f in aggfunc.split(',')]
@@ -58,14 +65,14 @@ def query_data(config: Config,
     for i in range(1, len(aggfuncs)):
         aggfunc_str += f' or r["aggfunc"] == "{aggfuncs[i]}"'
     aggfunc_str += ")"
-    logger.trace(aggfunc_str)
 
+    # |> filter(fn: (r) => r["_measurement"] == "{measurement}")
     # |> filter(fn: (r) => r["_field"] == "{field}")
     # |> filter(fn: (r) => r["aggfunc"] == "{aggfunc}")
     query = f"""
         from(bucket: "{config.influxdb()['bucket']}")
           |> range(start: {ts_from.isoformat()}, stop: {ts_to.isoformat()})
-          |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+          {measurements_str}
           {field_str}
           |> filter(fn: (r) => r["aggwindow"] == "{aggwindow}")
           {aggfunc_str}
@@ -128,36 +135,6 @@ def get_filename(label, ts_from, ts_to):
     return filename
 
 
-# def output_plot_show(df: pd.DataFrame,
-#                      data_line_shape: str,
-#                      layout_title: str,
-#                      layout_yaxis_title: str,
-#                      plotly_template: str):
-#     plot = go.Figure(
-#         data=df_columns_to_scatter_data(df, data_line_shape=data_line_shape),
-#         layout=go.Layout(
-#             legend=dict(
-#                 yanchor="top",
-#                 y=-0.1,
-#                 xanchor="left",
-#                 x=0
-#             ),
-#             template=plotly_template,
-#             title=layout_title,
-#             yaxis=go.layout.YAxis(
-#                 title=layout_yaxis_title
-#             ),
-#         )
-#     ).to_html(
-#         full_html=False,
-#         config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
-#     )
-#
-#     plot = '<div class="h-100 pb-4">' + plot[5:]
-#
-#     return plot
-
-
 def plot_stacked_scatter(
         df: pd.DataFrame,
         data_line_shape: str,
@@ -183,7 +160,7 @@ def plot_stacked_scatter(
     )
 
 
-def output_plot_show(fig: go.Figure):
+def output_plot_html(fig: go.Figure):
     html = fig.to_html(
         full_html=False,
         config={'displayModeBar': True, 'displaylogo': False, 'showTips': False}
@@ -204,7 +181,7 @@ def output_plot_png(fig: go.Figure, filename: str):
         filename=filename)
 
 
-def output_table_show(df):
+def output_table_html(df):
     df.index = df.index.strftime('%Y-%m-%d %H:%M')
 
     stat_min = df.min(numeric_only=True)
@@ -370,7 +347,7 @@ def electricity_energy(request):
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
                     )
 
-                    plot = output_plot_show(fig)
+                    plot = output_plot_html(fig)
 
                 elif 'plot_png' in request.POST:
                     fig = plot_stacked_scatter(
@@ -383,7 +360,7 @@ def electricity_energy(request):
                     return output_plot_png(fig, filename + ".png")
 
                 elif 'table_show' in request.POST:
-                    plot = output_table_show(df)
+                    plot = output_table_html(df)
 
                 elif 'table_excel' in request.POST:
                     return output_table_excel(df, filename, "Потребленная ЭЭ")
@@ -450,7 +427,7 @@ def electricity_energy(request):
                         layout_yaxis_title="Потребленная ЭЭ, кВт*ч",
                     )
 
-                    plot = output_plot_show(fig)
+                    plot = output_plot_html(fig)
 
                 elif 'plot_png' in request.POST:
                     fig = plot_stacked_scatter(
@@ -464,7 +441,7 @@ def electricity_energy(request):
                     return output_plot_png(fig, filename + ".png")
 
                 elif 'table_show' in request.POST:
-                    plot = output_table_show(df_total)
+                    plot = output_table_html(df_total)
 
                 elif 'table_excel' in request.POST:
                     return output_table_excel(df_total, filename, "Потребленная ЭЭ")
@@ -568,28 +545,27 @@ def electricity_power(request):
                 plot_show = 'plot_show' in request.POST
                 plot_png = 'plot_png' in request.POST
 
-                if plot_show or plot_png:
-                    if plot_show:
-                        layout_template = get_plotly_template(request.session['theme'])
-                    else:
-                        layout_template = get_plotly_template('white')
+                if plot_show:
+                    layout_template = get_plotly_template(request.session['theme'])
+                else:
+                    layout_template = get_plotly_template('white')
 
-                if 'plot_show' in request.POST:
+                if plot_show:
                     fig = plot_stacked_scatter(
                         df=df,
                         data_line_shape='linear',
-                        layout_template=get_plotly_template(request.session['theme']),
+                        layout_template=layout_template,
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Пиковая мощность, кВт",
                     )
 
-                    plot = output_plot_show(fig)
+                    plot = output_plot_html(fig)
 
-                elif 'plot_png' in request.POST:
+                elif plot_png:
                     fig = plot_stacked_scatter(
                         df=df,
                         data_line_shape='linear',
-                        layout_template='seaborn',
+                        layout_template=layout_template,
                         layout_title=config.e[tag].label,
                         layout_yaxis_title="Пиковая мощность, кВт",
                     )
@@ -597,7 +573,83 @@ def electricity_power(request):
                     return output_plot_png(fig, filename + ".png")
 
                 elif 'table_show' in request.POST:
-                    plot = output_table_show(df)
+                    plot = output_table_html(df)
+
+                elif 'table_excel' in request.POST:
+                    return output_table_excel(df, filename, "Пиковая мощность")
+
+            elif tag in config.eg:
+                # определяем, какие теги используются в формуле
+                formula = config.eg[tag].formula
+                tags = set(re.split(' +', formula.translate({ord(c): ' ' for c in "()+-/*"}).strip()))
+
+                # заменим теги в формуле: tag -> row['tag']
+                formula_for_apply = ''
+                for t in re.split(' +', formula.translate({ord(c): f' {c} ' for c in "()+-/*"}).strip()):
+                    if len(t) > 2:
+                        formula_for_apply += f"row['{config.e[t].influxdb_meas}']"
+                    else:
+                        formula_for_apply += t
+                print(formula_for_apply)
+
+                df = query_data(
+                    config=config,
+                    ts_from=ts_from,
+                    ts_to=ts_to,
+                    measurement=','.join([config.e[x].influxdb_meas for x in tags]),
+                    field=form.cleaned_data['field'],
+                    aggwindow=form.cleaned_data['aggregate_window'],
+                    aggfunc='max',
+                )
+                if len(df) == 0:
+                    return alert_nodata(form, request, "Показатели качества ЭЭ")
+
+                df['_value'] = pd.to_numeric(df['_value'])
+                df = df.pivot_table(index="_time", columns='_measurement', values='_value')
+
+                df = df.sort_index(axis=0)
+                df.index = df.index.tz_convert(settings.TIME_ZONE)
+                df.index = df.index.rename('Время')
+
+                df = df.fillna(0)
+                df[config.eg[tag].label] = df.apply(df_apply_formula, args=(formula_for_apply,), axis=1)
+
+                # переименовываем стобцы
+                for t in tags:
+                    meas = config.e[t].influxdb_meas
+                    if meas in df.columns:
+                        df = df.rename(columns={meas: config.e[t].label})
+
+                # имя файла для экспорта
+                filename = get_filename(config.eg[tag].label, ts_from, ts_to)
+
+                plot_show = 'plot_show' in request.POST
+                plot_png = 'plot_png' in request.POST
+
+                if plot_show:
+                    fig = plot_stacked_scatter(
+                        df=df,
+                        data_line_shape='linear',
+                        layout_template=get_plotly_template(request.session['theme']),
+                        layout_title=config.eg[tag].label,
+                        layout_yaxis_title="Пиковая мощность, Вт",
+                    )
+
+                    plot = output_plot_html(fig)
+
+                elif plot_png:
+                    fig = plot_stacked_scatter(
+                        df=df,
+                        data_line_shape='linear',
+                        layout_template='seaborn',
+                        layout_title=config.eg[tag].label,
+                        layout_yaxis_title="Пиковая мощность, Вт",
+                    )
+
+                    return output_plot_png(fig, filename + ".png")
+
+                elif 'table_show' in request.POST:
+                    plot = output_table_html(df)
 
                 elif 'table_excel' in request.POST:
                     return output_table_excel(df, filename, "Пиковая мощность")
@@ -692,7 +744,7 @@ def electricity_quality(request):
                     fields_label = cf[1]
                     break
 
-            logger.debug(f"try to load tag: {measurement}, from: {ts_from}, to: {ts_to}, "
+            logger.trace(f"try to load tag: {measurement}, from: {ts_from}, to: {ts_to}, "
                          f"fields: {fields}, "
                          f"aggwindow: {form.cleaned_data['aggregate_window']}")
 
@@ -849,7 +901,7 @@ def electricity_quality(request):
                             filename=filename)
 
                 elif 'table_show' in request.POST:
-                    plot = output_table_show(df)
+                    plot = output_table_html(df)
 
                 elif 'table_excel' in request.POST:
                     return output_table_excel(df, filename, f"{meas_label}. {fields_label}")
